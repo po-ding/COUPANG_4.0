@@ -5,56 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>cargo note - 설정</title>
     <link rel="stylesheet" href="style.css">
-    <script src='https://unpkg.com/tesseract.js@v4.1.1/dist/tesseract.min.js'></script>
 </head>
 <body>
     <div class="container">
         <div class="page-nav">
             <h1 class="logo">cargo<span class="logo-point">note</span></h1>
             <div class="nav-buttons">
-                <!-- ID를 back-to-main-btn으로 설정하여 main.js와 연결 -->
+                <!-- ✅ ID를 main.js와 맞춤 -->
                 <button type="button" id="back-to-main-btn">← 기록부로</button>
             </div>
         </div>
 
-        <!-- main.js가 요소를 찾을 때 오류가 나지 않도록 빈 div 배치 -->
         <div id="main-page" class="hidden"></div>
 
-        <!-- 실제 설정 내용 -->
         <div id="settings-page">
-            <div class="data-summary-section">
-                <h2>데이터 요약</h2>
-                <div id="current-month-summary-container"><h4 id="current-month-title"></h4><div class="summary-grid" id="month-summary-grid"><div class="metric-card"><span class="metric-label">운행일수</span><span class="metric-value" id="current-month-operating-days">-</span></div><div class="metric-card"><span class="metric-label">운행건수</span><span class="metric-value" id="current-month-trip-count">-</span></div><div class="metric-card"><span class="metric-label">총 운행거리</span><span class="metric-value" id="current-month-total-mileage">-</span></div><div class="metric-card"><span class="metric-label">총수입</span><span class="metric-value income" id="current-month-income">-</span></div><div class="metric-card"><span class="metric-label">총지출</span><span class="metric-value cost" id="current-month-expense">-</span></div><div class="metric-card highlight"><span class="metric-label">정산 금액</span><span class="metric-value" id="current-month-net-income">-</span></div><div class="metric-card"><span class="metric-label">평균 연비</span><span class="metric-value" id="current-month-avg-economy">-</span></div><div class="metric-card"><span class="metric-label">km당 운행비용</span><span class="metric-value" id="current-month-cost-per-km">-</span></div></div></div>
-            </div>
-            
-            <h2 id="toggle-mileage-management" class="collapsible-header">주행거리 보정 및 요약</h2>
-            <div id="mileage-management-body" class="collapsible-body hidden"><fieldset><legend>보정</legend><div class="input-group"><input type="number" id="mileage-correction"><button id="mileage-correction-save-btn">저장</button></div></fieldset><fieldset><legend>요약</legend><div class="selector-group" id="mileage-summary-controls"><button class="tab-btn active" data-period="monthly">월별</button><button class="tab-btn" data-period="weekly">주별</button></div><div id="mileage-summary-cards" class="summary-grid"></div></fieldset></div>
-            
-            <h2 id="toggle-center-management" class="collapsible-header">운송 지역 관리</h2>
-            <div id="center-management-body" class="collapsible-body hidden">
-                <fieldset>
-                    <legend>새 지역 추가</legend>
-                    <div class="input-group">
-                        <input type="text" id="new-center-name" placeholder="지역 이름">
-                        <input type="text" id="new-center-address" placeholder="주소 (선택)">
-                        <input type="text" id="new-center-memo" placeholder="메모 (선택)">
-                        <button type="button" id="add-center-btn">추가</button>
-                    </div>
-                </fieldset>
-                <fieldset>
-                    <legend>등록된 지역 목록</legend>
-                    <input type="text" id="center-search-input" placeholder="검색...">
-                    <div id="center-list-container"></div>
-                </fieldset>
-            </div>
-
-            <!-- 데이터 관리 버튼들 (ID 유지) -->
-            <h2 id="toggle-data-management" class="collapsible-header">데이터 관리</h2>
-            <div id="data-management-body" class="collapsible-body hidden">
-                <button id="export-json-btn">저장</button>
-                <button id="import-json-btn">복원</button>
-                <button id="clear-btn">삭제</button>
-                <input type="file" id="import-file-input" class="hidden" accept=".json">
+            <h2>데이터 관리</h2>
+            <div class="action-btn-group">
+                <button id="export-json-btn">전체 백업</button>
+                <button id="clear-btn" style="background-color:red">데이터 삭제</button>
             </div>
         </div>
     </div>

@@ -1,13 +1,14 @@
+// ✅ 올바른 import 문법으로 수정
 import * as Utils from './utils.js';
 import * as Data from './data.js';
 import * as UI from './ui.js';
-import * as Stats from './stats.js';
+import * as Stats from './stats.js'; 
 import { parseSmsText, applyParsedSms } from './sms_parser.js';
 
 function setupEventListeners() {
     const getEl = (id) => document.getElementById(id);
 
-    // [추가] SMS 분석 버튼 연결 (요소가 있을 때만)
+    // [추가] SMS 인식 버튼 연결 - 버튼이 없을 수 있으므로 ?. 사용
     getEl('btn-parse-sms')?.addEventListener('click', parseSmsText);
     window.applyParsedSms = applyParsedSms;
 
@@ -54,7 +55,7 @@ function setupEventListeners() {
         }
     });
 
-    // 상/하차지 입력 시 자동 로드 (안전한 인풋 핸들러)
+    // 상/하차지 입력 시 자동 로드
     const handleLocationInput = () => {
         const fromIn = getEl('from-center');
         const toIn = getEl('to-center');
@@ -63,7 +64,7 @@ function setupEventListeners() {
 
         const from = fromIn.value.trim();
         const to = toIn.value.trim();
-        const type = typeIn.value;
+        const type = typeIn?.value;
 
         if((type === '화물운송' || type === '대기') && from && to) {
             const key = `${from}-${to}`;
@@ -76,11 +77,6 @@ function setupEventListeners() {
             if(distEl) {
                 if(Data.MEM_DISTANCES[key]) distEl.value = Data.MEM_DISTANCES[key];
                 else distEl.value = ''; 
-            }
-            const costEl = getEl('cost');
-            if(costEl) {
-                if(Data.MEM_COSTS[key]) costEl.value = (Data.MEM_COSTS[key]/10000).toFixed(2);
-                else costEl.value = ''; 
             }
         }
         UI.updateAddressDisplay();
@@ -122,9 +118,8 @@ function setupEventListeners() {
         updateAllDisplays();
     });
 
-    // 화면 전환 (설정 <-> 기록부)
+    // 화면 전환 버튼 (설정으로 가기)
     getEl('go-to-settings-btn')?.addEventListener('click', () => { 
-        // 1. 같은 페이지 내 전환 시도
         const mainP = getEl('main-page');
         const setP = getEl('settings-page');
         if(mainP && setP) {
@@ -135,38 +130,36 @@ function setupEventListeners() {
             Stats.displayCumulativeData(); 
             Stats.displayCurrentMonthData(); 
         } else {
-            // 2. 다른 파일로 이동
             location.href = 'settings.html';
         }
     });
 
+    // 화면 전환 버튼 (메인으로 가기)
     getEl('back-to-main-btn')?.addEventListener('click', () => { 
         const mainP = getEl('main-page');
         const setP = getEl('settings-page');
-        if(mainP && setP && !mainP.innerHTML === "") { // index.html인 경우
+        if(mainP && setP && mainP.children.length > 0) { // index.html 내부인 경우
             mainP.classList.remove("hidden"); 
             setP.classList.add("hidden"); 
             getEl('go-to-settings-btn')?.classList.remove("hidden"); 
             getEl('back-to-main-btn')?.classList.add("hidden"); 
             updateAllDisplays(); 
         } else {
-            // settings.html인 경우 실제 이동
-            location.href = 'index.html';
+            location.href = 'index.html'; // settings.html인 경우 이동
         }
     });
 
-    // 콜랩서 (안전하게 연결)
+    getEl('refresh-btn')?.addEventListener('click', () => { UI.resetForm(); location.reload(); });
+
     document.querySelectorAll('.collapsible-header').forEach(header => { 
         header.addEventListener("click", () => { 
             const body = header.nextElementSibling; 
             header.classList.toggle("active"); 
             body.classList.toggle("hidden"); 
-            if (header.id === 'toggle-subsidy-management' && !body.classList.contains('hidden')) Stats.displaySubsidyRecords(false); 
             if (header.id === 'toggle-center-management' && !body.classList.contains('hidden')) UI.displayCenterList();
         }); 
     });
 
-    // 탭 버튼 (안전하게 연결)
     document.querySelectorAll('.tab-btn').forEach(btn => { 
         btn.addEventListener("click", event => { 
             if(btn.parentElement.classList.contains('view-tabs')) { 
@@ -193,7 +186,6 @@ function updateAllDisplays() {
     Stats.displayDailyRecords();
     Stats.displayWeeklyRecords();
     Stats.displayMonthlyRecords();
-    renderFrequentLocationButtons(); 
 }
 
 function initialSetup() {
@@ -201,7 +193,6 @@ function initialSetup() {
     UI.populateCenterDatalist();
     UI.populateExpenseDatalist();
     
-    // 날짜/시간 초기값 (페이지에 인풋이 있을 때만)
     const todayStr = Utils.getTodayString();
     const nowTime = Utils.getCurrentTimeString();
     const dateIn = document.getElementById('date');
@@ -218,12 +209,7 @@ function initialSetup() {
     ['daily-year-select', 'weekly-year-select', 'monthly-year-select', 'print-year-select'].forEach(id => {
         const el = document.getElementById(id); if(el) el.innerHTML = yrs.join('');
     });
-    const ms = []; for(let i=1; i<=12; i++) ms.push(`<option value="${i.toString().padStart(2,'0')}">${i}월</option>`);
-    ['daily-month-select', 'weekly-month-select', 'print-month-select'].forEach(id => {
-        const el = document.getElementById(id); if(el) { el.innerHTML = ms.join(''); el.value = (new Date().getMonth()+1).toString().padStart(2,'0'); }
-    });
     
-    // settings.html인 경우 초기 데이터 로드
     if(window.location.pathname.includes('settings.html')) {
         Stats.displayCumulativeData(); 
         Stats.displayCurrentMonthData();
@@ -234,17 +220,13 @@ function initialSetup() {
 }
 
 function initPrintAndDataFeatures() {
-    // 요소가 있을 때만 동작하는 데이터 관련 기능
     const getEl = (id) => document.getElementById(id);
-    
     getEl('export-json-btn')?.addEventListener('click', () => { 
-        const data = { records: Data.MEM_RECORDS, centers: Data.MEM_CENTERS, locations: Data.MEM_LOCATIONS, fares: Data.MEM_FARES, distances: Data.MEM_DISTANCES, costs: Data.MEM_COSTS }; 
+        const data = { records: Data.MEM_RECORDS, centers: Data.MEM_CENTERS, locations: Data.MEM_LOCATIONS }; 
         const b = new Blob([JSON.stringify(data,null,2)],{type:"application/json"}); 
         const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download=`backup_${Utils.getTodayString()}.json`; 
         a.click(); 
     });
-    
-    getEl('import-json-btn')?.addEventListener('click', () => getEl('import-file-input')?.click());
     getEl('clear-btn')?.addEventListener('click', () => { if(confirm('전체삭제?')) { localStorage.clear(); location.reload(); }});
 }
 
