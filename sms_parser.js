@@ -15,24 +15,21 @@ export function parseSmsText() {
     resultsDiv.innerHTML = "";
     resultsDiv.classList.remove('hidden');
 
-    const blocks = input.split(/\n\s*\n/); // 빈 줄 기준 건별 분리
+    const blocks = input.split(/\n\s*\n/); 
     
     blocks.forEach((block, index) => {
         if(!block.trim() || block.includes("Web발신")) return;
         
-        // 1. 노이즈 제거
         let cleanText = block.replace(/\[?\d+호\]?|\d+호|\d{1,2}:\d{2}|\d+T|\d+톤|\d+층\s*->\s*\d+층|\d+층/g, "").trim();
         
-        // 2. 쉼표 또는 줄바꿈 기준 분리
         const parts = cleanText.split(/,|\n/);
         if (parts.length < 2) return;
 
         const rawFrom = parts[0].trim();
         const rawTo = parts[1].trim();
 
-        // 3. 매칭 로직
         const findMatch = (str) => {
-            const kor = str.match(/[가-힣0-9]{2,}/);
+            const kor = str.match(/[가-힣0-9]{2,}/); 
             const key = kor ? kor[0] : null;
             return key ? MEM_CENTERS.find(c => c.includes(key)) : null;
         };
@@ -61,7 +58,6 @@ export function applyParsedSms(f, t) {
         fromIn.value = f;
         toIn.value = t;
 
-        // 인풋 이벤트 발생시켜서 메인 화면의 운임/거리 자동로드 트리거
         fromIn.dispatchEvent(new Event('input'));
         toIn.dispatchEvent(new Event('input'));
 

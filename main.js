@@ -7,7 +7,7 @@ import { parseSmsText, applyParsedSms } from './sms_parser.js';
 function setupEventListeners() {
     const getEl = (id) => document.getElementById(id);
 
-    // [중요] SMS 인식 관련 - 버튼이 없을 수 있으므로 ?. 사용
+    // [중요] SMS 인식 관련 - 버튼 존재 여부 확인 후 연결
     getEl('btn-parse-sms')?.addEventListener('click', parseSmsText);
     window.applyParsedSms = applyParsedSms;
 
@@ -89,7 +89,7 @@ function setupEventListeners() {
     getEl('from-center')?.addEventListener('input', handleLocationInput);
     getEl('to-center')?.addEventListener('input', handleLocationInput);
 
-    // 버튼들 - ?.를 사용하여 요소가 없어도 실행 중단 방지
+    // 버튼 액션들 - 요소가 화면에 있을 때만 연결
     getEl('btn-register-trip')?.addEventListener('click', () => {
         const formData = UI.getFormDataWithoutTime();
         if (formData.type === '화물운송' && formData.distance <= 0) { alert('운행거리를 입력해주세요.'); return; }
@@ -206,7 +206,7 @@ function setupEventListeners() {
     getEl('prev-day-btn')?.addEventListener('click', () => moveDate(-1));
     getEl('next-day-btn')?.addEventListener('click', () => moveDate(1));
 
-    // [화살표 추가] 일/주/월
+    // 일/주/월 화살표
     const changeDateSelect = (yId, mId, delta) => {
         const yEl = getEl(yId), mEl = getEl(mId);
         if(!yEl || !mEl) return;
@@ -231,21 +231,21 @@ function setupEventListeners() {
         getEl(id)?.addEventListener('change', updateAllDisplays);
     });
 
-    // 화면 전환
+    // 화면 전환 토글
     getEl('go-to-settings-btn')?.addEventListener('click', () => { 
-        getEl('main-page').classList.add("hidden"); 
-        getEl('settings-page').classList.remove("hidden"); 
-        getEl('go-to-settings-btn').classList.add("hidden"); 
-        getEl('back-to-main-btn').classList.remove("hidden"); 
+        getEl('main-page')?.classList.add("hidden"); 
+        getEl('settings-page')?.classList.remove("hidden"); 
+        getEl('go-to-settings-btn')?.classList.add("hidden"); 
+        getEl('back-to-main-btn')?.classList.remove("hidden"); 
         Stats.displayCumulativeData(); 
         Stats.displayCurrentMonthData(); 
         Stats.displaySubsidyRecords();
     });
     getEl('back-to-main-btn')?.addEventListener('click', () => { 
-        getEl('main-page').classList.remove("hidden"); 
-        getEl('settings-page').classList.add("hidden"); 
-        getEl('go-to-settings-btn').classList.remove("hidden"); 
-        getEl('back-to-main-btn').classList.add("hidden"); 
+        getEl('main-page')?.classList.remove("hidden"); 
+        getEl('settings-page')?.classList.add("hidden"); 
+        getEl('go-to-settings-btn')?.classList.remove("hidden"); 
+        getEl('back-to-main-btn')?.classList.add("hidden"); 
         updateAllDisplays(); 
     });
 
@@ -282,11 +282,13 @@ function setupEventListeners() {
     
     // 글로벌 함수
     window.viewDateDetails = (date) => { 
-        getEl('today-date-picker').value = date; 
+        const picker = getEl('today-date-picker');
+        if(picker) picker.value = date; 
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove("active")); 
-        document.querySelector('.tab-btn[data-view="today"]').classList.add("active"); 
+        const todayTab = document.querySelector('.tab-btn[data-view="today"]');
+        if(todayTab) todayTab.classList.add("active"); 
         document.querySelectorAll('.view-content').forEach(c => c.classList.remove('active')); 
-        getEl("today-view").classList.add("active"); 
+        getEl("today-view")?.classList.add("active"); 
         Stats.displayTodayRecords(date); 
     };
     window.toggleAllSummaryValues = (gridElement) => { 
@@ -301,17 +303,19 @@ function setupEventListeners() {
 }
 
 function initialSetup() {
-    // [중요] 날짜 설정을 로드보다 앞에 배치하여 UI가 멈춰도 날짜는 나오게 함
+    // 날짜 및 시간 초기화 (가장 먼저 실행)
     const todayStr = Utils.getTodayString();
     const nowTime = Utils.getCurrentTimeString();
-    const dateIn = document.getElementById('date');
-    const timeIn = document.getElementById('time');
-    if(dateIn) dateIn.value = todayStr;
-    if(timeIn) timeIn.value = nowTime;
+    const dIn = document.getElementById('date');
+    const tIn = document.getElementById('time');
+    if(dIn) dIn.value = todayStr;
+    if(tIn) tIn.value = nowTime;
 
-    const statToday = Utils.getStatisticalDate(todayStr, nowTime);
     const picker = document.getElementById('today-date-picker');
-    if(picker) picker.value = statToday;
+    if(picker) {
+        const statToday = Utils.getStatisticalDate(todayStr, nowTime);
+        picker.value = statToday;
+    }
 
     Data.loadAllData();
     UI.populateCenterDatalist();
@@ -326,10 +330,9 @@ function initialSetup() {
     ['daily-month-select', 'weekly-month-select', 'print-month-select'].forEach(id => {
         const el = document.getElementById(id); if(el) { el.innerHTML = ms.join(''); el.value = (new Date().getMonth()+1).toString().padStart(2,'0'); }
     });
-    
     const mC = document.getElementById('mileage-correction'); if(mC) mC.value = localStorage.getItem('mileage_correction') || 0;
     const sL = document.getElementById('subsidy-limit'); if(sL) sL.value = localStorage.getItem('fuel_subsidy_limit') || 0;
-    
+
     UI.resetForm();
     updateAllDisplays();
     setupEventListeners();
@@ -400,8 +403,7 @@ function renderFrequentLocationButtons() {
 }
 
 function initOtherFeatures() {
-    // 출력 버튼 리스너 (ID 매칭 확인)
-    const getPrintEls = () => ({ y: document.getElementById('print-year-select').value, m: document.getElementById('print-month-select').value });
+    const getPrintEls = () => ({ y: document.getElementById('print-year-select')?.value, m: document.getElementById('print-month-select')?.value });
     document.getElementById('print-first-half-btn')?.addEventListener('click', () => { const p = getPrintEls(); Stats.generatePrintView(p.y, p.m, 'first', false) });
     document.getElementById('print-second-half-btn')?.addEventListener('click', () => { const p = getPrintEls(); Stats.generatePrintView(p.y, p.m, 'second', false) });
     document.getElementById('print-full-month-btn')?.addEventListener('click', () => { const p = getPrintEls(); Stats.generatePrintView(p.y, p.m, 'full', false) });
