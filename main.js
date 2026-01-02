@@ -2,14 +2,19 @@ import * as Utils from './utils.js';
 import * as Data from './data.js';
 import * as UI from './ui.js';
 import * as Stats from './stats.js';
-import { parseSmsText, applyParsedSms } from './sms_parser.js';
+import { parseSmsText, registerParsedTrip } from './sms_parser.js';
 
 function setupEventListeners() {
     const getEl = (id) => document.getElementById(id);
 
-    // [중요] SMS 인식 관련 - 버튼 존재 여부 확인 후 연결
+    // SMS 인식 버튼 연결
     getEl('btn-parse-sms')?.addEventListener('click', parseSmsText);
-    window.applyParsedSms = applyParsedSms;
+    
+    // 동적 생성 버튼을 위해 전역 window 객체에 함수 등록
+    window.registerParsedTrip = registerParsedTrip;
+    
+    // UI 업데이트 함수를 sms_parser에서 쓸 수 있게 노출
+    window.updateAllDisplays = updateAllDisplays;
 
     // 모바일 아코디언
     const toggleSections = ['datetime', 'type'];
