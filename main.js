@@ -2,12 +2,12 @@ import * as Utils from './utils.js';
 import * as Data from './data.js';
 import * as UI from './ui.js';
 import * as Stats from './stats.js';
-import { parseSmsText, applyParsedSms } from './sms_parser.js'; // [추가] SMS 모듈 로드
+import { parseSmsText, applyParsedSms } from './sms_parser.js'; // [추가]
 
 function setupEventListeners() {
     const getEl = (id) => document.getElementById(id);
 
-    // [추가] SMS 분석 버튼 이벤트 연결
+    // [추가] SMS 인식 관련
     getEl('btn-parse-sms')?.addEventListener('click', parseSmsText);
     window.applyParsedSms = applyParsedSms;
 
@@ -301,29 +301,45 @@ function setupEventListeners() {
 }
 
 function initialSetup() {
-    Data.loadAllData();
-    UI.populateCenterDatalist();
-    UI.populateExpenseDatalist();
-    const y = new Date().getFullYear();
-    const yrs = []; for(let i=0; i<5; i++) yrs.push(`<option value="${y-i}">${y-i}년</option>`);
-    ['daily-year-select', 'weekly-year-select', 'monthly-year-select', 'print-year-select'].forEach(id => {
-        const el = document.getElementById(id); if(el) el.innerHTML = yrs.join('');
-    });
-    const ms = []; for(let i=1; i<=12; i++) ms.push(`<option value="${i.toString().padStart(2,'0')}">${i}월</option>`);
-    ['daily-month-select', 'weekly-month-select', 'print-month-select'].forEach(id => {
-        const el = document.getElementById(id); if(el) { el.innerHTML = ms.join(''); el.value = (new Date().getMonth()+1).toString().padStart(2,'0'); }
-    });
-    const mC = document.getElementById('mileage-correction'); if(mC) mC.value = localStorage.getItem('mileage_correction') || 0;
-    const sL = document.getElementById('subsidy-limit'); if(sL) sL.value = localStorage.getItem('fuel_subsidy_limit') || 0;
-    const todayStr = Utils.getTodayString();
-    const nowTime = Utils.getCurrentTimeString();
-    const statToday = Utils.getStatisticalDate(todayStr, nowTime);
-    const picker = document.getElementById('today-date-picker');
-    if(picker) picker.value = statToday;
-    UI.resetForm();
-    updateAllDisplays();
-    setupEventListeners();
-    initOtherFeatures();
+    try {
+        Data.loadAllData();
+        UI.populateCenterDatalist();
+        UI.populateExpenseDatalist();
+        
+        const y = new Date().getFullYear();
+        const yrs = []; for(let i=0; i<5; i++) yrs.push(`<option value="${y-i}">${y-i}년</option>`);
+        ['daily-year-select', 'weekly-year-select', 'monthly-year-select', 'print-year-select'].forEach(id => {
+            const el = document.getElementById(id); if(el) el.innerHTML = yrs.join('');
+        });
+        
+        const ms = []; for(let i=1; i<=12; i++) ms.push(`<option value="${i.toString().padStart(2,'0')}">${i}월</option>`);
+        ['daily-month-select', 'weekly-month-select', 'print-month-select'].forEach(id => {
+            const el = document.getElementById(id); if(el) { el.innerHTML = ms.join(''); el.value = (new Date().getMonth()+1).toString().padStart(2,'0'); }
+        });
+        
+        const mC = document.getElementById('mileage-correction'); if(mC) mC.value = localStorage.getItem('mileage_correction') || 0;
+        const sL = document.getElementById('subsidy-limit'); if(sL) sL.value = localStorage.getItem('fuel_subsidy_limit') || 0;
+        
+        const todayStr = Utils.getTodayString();
+        const nowTime = Utils.getCurrentTimeString();
+        
+        // 날짜/시간 인풋 초기값 채우기
+        const dIn = document.getElementById('date');
+        const tIn = document.getElementById('time');
+        if(dIn) dIn.value = todayStr;
+        if(tIn) tIn.value = nowTime;
+
+        const statToday = Utils.getStatisticalDate(todayStr, nowTime);
+        const picker = document.getElementById('today-date-picker');
+        if(picker) picker.value = statToday;
+        
+        UI.resetForm();
+        updateAllDisplays();
+        setupEventListeners();
+        initOtherFeatures();
+    } catch (e) {
+        console.error("초기 로딩 오류 발생:", e);
+    }
 }
 
 function updateAllDisplays() {
@@ -390,7 +406,6 @@ function renderFrequentLocationButtons() {
 }
 
 function initOtherFeatures() {
-    // 출력 버튼 리스너 (ID 매칭 확인)
     const getPrintEls = () => ({ y: document.getElementById('print-year-select').value, m: document.getElementById('print-month-select').value });
     document.getElementById('print-first-half-btn')?.addEventListener('click', () => { const p = getPrintEls(); Stats.generatePrintView(p.y, p.m, 'first', false) });
     document.getElementById('print-second-half-btn')?.addEventListener('click', () => { const p = getPrintEls(); Stats.generatePrintView(p.y, p.m, 'second', false) });
