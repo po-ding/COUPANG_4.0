@@ -1,0 +1,31 @@
+--- START OF FILE settings.html ---
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>cargo note - 설정</title>
+    <link rel="stylesheet" href="style.css">
+    <script src='https://unpkg.com/tesseract.js@v4.1.1/dist/tesseract.min.js'></script>
+</head>
+<body>
+    <!-- (settings.html 내부 컨텐츠는 index.html의 #settings-page와 공유되거나 유사하므로,
+         중요한 것은 아래 스크립트 경로 수정입니다.) -->
+    <div class="container">
+        <div class="page-nav">
+            <h1 class="logo">cargo<span class="logo-point">note</span></h1>
+            <div class="nav-buttons">
+                <button type="button" onclick="location.href='index.html'">← 기록부로</button>
+            </div>
+        </div>
+        <!-- (설정 페이지 내용 생략 - 위 index.html 참조) -->
+        <div id="settings-page" style="display:block;">
+             <!-- 데이터 요약, 지역 관리 등... -->
+        </div>
+    </div>
+    <div id="toast-notification"></div>
+    <!-- [변경] 스크립트 경로를 루트 폴더로 변경 -->
+    <script type="module" src="main.js"></script>
+</body>
+</html>
