@@ -2,12 +2,12 @@ import * as Utils from './utils.js';
 import * as Data from './data.js';
 import * as UI from './ui.js';
 import * as Stats from './stats.js';
-import { parseSmsText, applyParsedSms } from './sms_parser.js'; // [추가]
+import { parseSmsText, applyParsedSms } from './sms_parser.js';
 
 function setupEventListeners() {
     const getEl = (id) => document.getElementById(id);
 
-    // [추가] SMS 버튼 연결 및 전역 등록
+    // [중요] SMS 인식 관련 - 버튼이 없을 수 있으므로 ?. 사용
     getEl('btn-parse-sms')?.addEventListener('click', parseSmsText);
     window.applyParsedSms = applyParsedSms;
 
@@ -89,7 +89,7 @@ function setupEventListeners() {
     getEl('from-center')?.addEventListener('input', handleLocationInput);
     getEl('to-center')?.addEventListener('input', handleLocationInput);
 
-    // 버튼들
+    // 버튼들 - ?.를 사용하여 요소가 없어도 실행 중단 방지
     getEl('btn-register-trip')?.addEventListener('click', () => {
         const formData = UI.getFormDataWithoutTime();
         if (formData.type === '화물운송' && formData.distance <= 0) { alert('운행거리를 입력해주세요.'); return; }
@@ -301,9 +301,22 @@ function setupEventListeners() {
 }
 
 function initialSetup() {
+    // [중요] 날짜 설정을 로드보다 앞에 배치하여 UI가 멈춰도 날짜는 나오게 함
+    const todayStr = Utils.getTodayString();
+    const nowTime = Utils.getCurrentTimeString();
+    const dateIn = document.getElementById('date');
+    const timeIn = document.getElementById('time');
+    if(dateIn) dateIn.value = todayStr;
+    if(timeIn) timeIn.value = nowTime;
+
+    const statToday = Utils.getStatisticalDate(todayStr, nowTime);
+    const picker = document.getElementById('today-date-picker');
+    if(picker) picker.value = statToday;
+
     Data.loadAllData();
     UI.populateCenterDatalist();
     UI.populateExpenseDatalist();
+
     const y = new Date().getFullYear();
     const yrs = []; for(let i=0; i<5; i++) yrs.push(`<option value="${y-i}">${y-i}년</option>`);
     ['daily-year-select', 'weekly-year-select', 'monthly-year-select', 'print-year-select'].forEach(id => {
@@ -313,13 +326,10 @@ function initialSetup() {
     ['daily-month-select', 'weekly-month-select', 'print-month-select'].forEach(id => {
         const el = document.getElementById(id); if(el) { el.innerHTML = ms.join(''); el.value = (new Date().getMonth()+1).toString().padStart(2,'0'); }
     });
+    
     const mC = document.getElementById('mileage-correction'); if(mC) mC.value = localStorage.getItem('mileage_correction') || 0;
     const sL = document.getElementById('subsidy-limit'); if(sL) sL.value = localStorage.getItem('fuel_subsidy_limit') || 0;
-    const todayStr = Utils.getTodayString();
-    const nowTime = Utils.getCurrentTimeString();
-    const statToday = Utils.getStatisticalDate(todayStr, nowTime);
-    const picker = document.getElementById('today-date-picker');
-    if(picker) picker.value = statToday;
+    
     UI.resetForm();
     updateAllDisplays();
     setupEventListeners();

@@ -3,13 +3,15 @@ import { updateAddressDisplay } from './ui.js';
 import { showToast } from './utils.js';
 
 export function parseSmsText() {
-    const input = document.getElementById('sms-input').value;
+    const smsInput = document.getElementById('sms-input');
+    const input = smsInput ? smsInput.value : "";
     if (!input.trim()) {
         showToast("텍스트를 입력해주세요.");
         return;
     }
 
     const resultsDiv = document.getElementById('sms-parse-results');
+    if(!resultsDiv) return;
     resultsDiv.innerHTML = "";
     resultsDiv.classList.remove('hidden');
 
@@ -30,9 +32,8 @@ export function parseSmsText() {
 
         // 3. 매칭 로직
         const findMatch = (str) => {
-            const kor = str.match(/[가-힣0-9]{2,}/); // 2글자 이상
-            const eng = str.match(/[a-zA-Z]{3,}/);
-            const key = kor ? kor[0] : (eng ? eng[0] : null);
+            const kor = str.match(/[가-힣0-9]{2,}/);
+            const key = kor ? kor[0] : null;
             return key ? MEM_CENTERS.find(c => c.includes(key)) : null;
         };
 
@@ -44,8 +45,8 @@ export function parseSmsText() {
         
         itemDiv.innerHTML = `
             <b>건 #${index + 1} 분석 결과</b><br>
-            상차: ${fMatch ? `<span style="color:green;">[기존] ${fMatch}</span>` : `<span style="color:red;">[신규] ${rawFrom}</span>`}<br>
-            하차: ${tMatch ? `<span style="color:green;">[기존] ${tMatch}</span>` : `<span style="color:red;">[신규] ${rawTo}</span>`}<br>
+            상차: ${fMatch ? `<span style="color:green; font-weight:bold;">[기존] ${fMatch}</span>` : `<span style="color:red;">[신규] ${rawFrom}</span>`}<br>
+            하차: ${tMatch ? `<span style="color:green; font-weight:bold;">[기존] ${tMatch}</span>` : `<span style="color:red;">[신규] ${rawTo}</span>`}<br>
             <button type="button" onclick="window.applyParsedSms('${(fMatch||rawFrom).replace(/'/g, "\\'")}', '${(tMatch||rawTo).replace(/'/g, "\\'")}')" style="padding:6px; margin-top:8px; width:100%; background:#fab005; color:black; border-radius:4px; border:none; cursor:pointer; font-weight:bold;">입력창 채우기</button>
         `;
         resultsDiv.appendChild(itemDiv);
@@ -60,14 +61,18 @@ export function applyParsedSms(f, t) {
         fromIn.value = f;
         toIn.value = t;
 
-        // main.js의 handleLocationInput(운임/거리 자동로드) 트리거를 위한 이벤트 발생
+        // 인풋 이벤트 발생시켜서 메인 화면의 운임/거리 자동로드 트리거
         fromIn.dispatchEvent(new Event('input'));
         toIn.dispatchEvent(new Event('input'));
 
         updateAddressDisplay();
-        showToast("입력창에 반영되었습니다.");
-        document.getElementById('sms-parse-results').classList.add('hidden');
-        document.getElementById('sms-input').value = "";
+        showToast("반영되었습니다.");
+        
+        const resDiv = document.getElementById('sms-parse-results');
+        const smsIn = document.getElementById('sms-input');
+        if(resDiv) resDiv.classList.add('hidden');
+        if(smsIn) smsIn.value = "";
+        
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 }
