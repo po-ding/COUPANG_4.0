@@ -45,11 +45,11 @@
                     </div>
                 </fieldset>
 
-                <!-- [SMS 문자 인식 구역 추가] -->
+                <!-- SMS 문자 인식 구역 -->
                 <fieldset id="sms-parser-section" style="background-color: #fff9db; border: 1px solid #fab005;">
                     <legend>배차 문자 자동 입력</legend>
                     <textarea id="sms-input" placeholder="배차 문자를 여기에 붙여넣으세요..." style="width:100%; height:80px; margin-bottom:5px; border:1px solid #ccc; border-radius:4px; padding:8px; box-sizing:border-box; resize:none;"></textarea>
-                    <button type="button" id="btn-parse-sms" style="background-color: #fab005; color: black; font-weight: bold; border:none; padding:10px; border-radius:4px; cursor:pointer; width:100%;">문자 분석</button>
+                    <button type="button" id="btn-parse-sms" style="background-color: #fab005; color: black; font-weight: bold; width: 100%; border:none; padding:10px; border-radius:4px; cursor:pointer;">문자 분석</button>
                     <div id="sms-parse-results" class="hidden" style="margin-top:10px; border:1px dashed #fab005; padding:8px; background:white; border-radius:4px;"></div>
                 </fieldset>
 
@@ -193,7 +193,8 @@
         </div>
 
         <div id="settings-page" class="hidden">
-            <div class="data-summary-section">
+            <!-- (index.html 내의 settings-page 내용은 그대로 유지) -->
+             <div class="data-summary-section">
                 <h2>데이터 요약</h2>
                 <div id="current-month-summary-container"><h4 id="current-month-title"></h4><div class="summary-grid" id="month-summary-grid"><div class="metric-card"><span class="metric-label">운행일수</span><span class="metric-value" id="current-month-operating-days">-</span></div><div class="metric-card"><span class="metric-label">운행건수</span><span class="metric-value" id="current-month-trip-count">-</span></div><div class="metric-card"><span class="metric-label">총 운행거리</span><span class="metric-value" id="current-month-total-mileage">-</span></div><div class="metric-card"><span class="metric-label">총수입</span><span class="metric-value income" id="current-month-income">-</span></div><div class="metric-card"><span class="metric-label">총지출</span><span class="metric-value cost" id="current-month-expense">-</span></div><div class="metric-card highlight"><span class="metric-label">정산 금액</span><span class="metric-value" id="current-month-net-income">-</span></div><div class="metric-card"><span class="metric-label">평균 연비</span><span class="metric-value" id="current-month-avg-economy">-</span></div><div class="metric-card"><span class="metric-label">km당 운행비용</span><span class="metric-value" id="current-month-cost-per-km">-</span></div></div></div>
                 <div id="cumulative-summary-container"><h4>누적 데이터</h4><div class="summary-grid" id="cumulative-summary-grid"><div class="metric-card"><span class="metric-label">총 운행일수</span><span class="metric-value" id="cumulative-operating-days">-</span></div><div class="metric-card"><span class="metric-label">누적 운행건수</span><span class="metric-value" id="cumulative-trip-count">-</span></div><div class="metric-card"><span class="metric-label">총 운행거리</span><span class="metric-value" id="cumulative-total-mileage">-</span></div><div class="metric-card"><span class="metric-label">누적 총수입</span><span class="metric-value income" id="cumulative-income">-</span></div><div class="metric-card"><span class="metric-label">누적 총지출</span><span class="metric-value cost" id="cumulative-expense">-</span></div><div class="metric-card highlight"><span class="metric-label">누적 정산 금액</span><span class="metric-value" id="cumulative-net-income">-</span></div><div class="metric-card"><span class="metric-label">평균 연비</span><span class="metric-value" id="cumulative-avg-economy">-</span></div><div class="metric-card"><span class="metric-label">km당 운행비용</span><span class="metric-value" id="cumulative-cost-per-km">-</span></div></div></div>
