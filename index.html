@@ -45,11 +45,11 @@
                     </div>
                 </fieldset>
 
-                <!-- [추가] SMS 문자 인식 섹션 -->
+                <!-- [SMS 문자 인식 구역 추가 - 원본 기능 방해 안함] -->
                 <fieldset id="sms-parser-section">
                     <legend>배차 문자 자동 입력</legend>
                     <textarea id="sms-input" placeholder="배차 문자를 여기에 붙여넣으세요..." style="width:100%; height:80px; margin-bottom:5px; border:1px solid #ccc; border-radius:4px; padding:8px; box-sizing:border-box; resize:none;"></textarea>
-                    <button type="button" id="btn-parse-sms" style="background-color: #fab005; color: black; font-weight: bold;">문자 분석</button>
+                    <button type="button" id="btn-parse-sms" style="background-color: #fab005; color: black; font-weight: bold; border:none; padding:10px; border-radius:4px; cursor:pointer; width:100%;">문자 분석</button>
                     <div id="sms-parse-results" class="hidden" style="margin-top:10px; border:1px dashed #fab005; padding:8px; background:#fff9db; border-radius:4px;"></div>
                 </fieldset>
 
@@ -204,7 +204,6 @@
             
             <h2 id="toggle-center-management" class="collapsible-header">운송 지역 관리</h2>
             <div id="center-management-body" class="collapsible-body hidden">
-                <!-- [수정] 새 지역 추가 폼 복구 -->
                 <fieldset>
                     <legend>새 지역 추가</legend>
                     <div class="input-group">
@@ -223,7 +222,6 @@
             
             <h2 id="toggle-batch-apply" class="collapsible-header">운임 일괄 적용</h2>
             <div id="batch-apply-body" class="collapsible-body hidden">
-                <!-- [수정] 일괄 적용 폼 복구 -->
                 <fieldset>
                     <legend>구간 일괄 적용</legend>
                     <div class="input-group row">
