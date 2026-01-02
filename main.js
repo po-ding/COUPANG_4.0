@@ -7,7 +7,7 @@ import { parseSmsText, applyParsedSms } from './sms_parser.js'; // [추가]
 function setupEventListeners() {
     const getEl = (id) => document.getElementById(id);
 
-    // [추가] SMS 인식 관련
+    // [추가] SMS 인식 기능 연결
     getEl('btn-parse-sms')?.addEventListener('click', parseSmsText);
     window.applyParsedSms = applyParsedSms;
 
@@ -301,6 +301,7 @@ function setupEventListeners() {
 }
 
 function initialSetup() {
+    // [보강] 초기화 시 오류가 발생해도 날짜 설정은 되도록 try-catch 사용
     try {
         Data.loadAllData();
         UI.populateCenterDatalist();
@@ -311,34 +312,34 @@ function initialSetup() {
         ['daily-year-select', 'weekly-year-select', 'monthly-year-select', 'print-year-select'].forEach(id => {
             const el = document.getElementById(id); if(el) el.innerHTML = yrs.join('');
         });
-        
         const ms = []; for(let i=1; i<=12; i++) ms.push(`<option value="${i.toString().padStart(2,'0')}">${i}월</option>`);
         ['daily-month-select', 'weekly-month-select', 'print-month-select'].forEach(id => {
             const el = document.getElementById(id); if(el) { el.innerHTML = ms.join(''); el.value = (new Date().getMonth()+1).toString().padStart(2,'0'); }
         });
-        
+
+        // 주행거리 보정 및 한도 초기값
         const mC = document.getElementById('mileage-correction'); if(mC) mC.value = localStorage.getItem('mileage_correction') || 0;
         const sL = document.getElementById('subsidy-limit'); if(sL) sL.value = localStorage.getItem('fuel_subsidy_limit') || 0;
         
-        const todayStr = Utils.getTodayString();
-        const nowTime = Utils.getCurrentTimeString();
-        
-        // 날짜/시간 인풋 초기값 채우기
+        // 날짜/시간 인풋 초기화
         const dIn = document.getElementById('date');
         const tIn = document.getElementById('time');
+        const todayStr = Utils.getTodayString();
+        const nowTime = Utils.getCurrentTimeString();
         if(dIn) dIn.value = todayStr;
         if(tIn) tIn.value = nowTime;
 
+        // 오늘 기록 조회 초기화
         const statToday = Utils.getStatisticalDate(todayStr, nowTime);
         const picker = document.getElementById('today-date-picker');
         if(picker) picker.value = statToday;
-        
+
         UI.resetForm();
         updateAllDisplays();
         setupEventListeners();
         initOtherFeatures();
     } catch (e) {
-        console.error("초기 로딩 오류 발생:", e);
+        console.error("초기화 과정 중 오류:", e);
     }
 }
 
