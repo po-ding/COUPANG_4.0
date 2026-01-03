@@ -7,12 +7,17 @@ import { parseSmsText, registerParsedTrip } from './sms_parser.js';
 function setupEventListeners() {
     const getEl = (id) => document.getElementById(id);
 
-    // SMS 및 전역 등록
+    // ✅ SMS 인식 버튼 및 전역 함수 연결 (?. 사용하여 에러 방지)
     getEl('btn-parse-sms')?.addEventListener('click', parseSmsText);
     window.registerParsedTrip = registerParsedTrip;
     window.updateAllDisplays = updateAllDisplays;
 
-    // 모바일 토글
+    // ✅ 설정 창 지역 검색 리스너 (누락되었던 기능)
+    getEl('center-search-input')?.addEventListener('input', (e) => {
+        UI.displayCenterList(e.target.value);
+    });
+
+    // 모바일 아코디언 토글
     const toggleSections = ['datetime', 'type'];
     toggleSections.forEach(section => {
         const legend = getEl(`legend-${section}`);
@@ -27,7 +32,7 @@ function setupEventListeners() {
         }
     });
 
-    // 주소 복사
+    // 주소 클릭 시 복사
     getEl('address-display')?.addEventListener('click', (e) => {
         if (e.target.classList.contains('address-clickable')) {
             const addr = e.target.dataset.address;
@@ -35,7 +40,7 @@ function setupEventListeners() {
         }
     });
 
-    // 테이블 클릭 (수정모드)
+    // 테이블 클릭 (수정 모드 진입 및 주소 복사)
     document.querySelector('#today-records-table tbody')?.addEventListener('click', (e) => {
         const addrTarget = e.target.closest('.location-clickable');
         if (addrTarget) {
@@ -51,7 +56,7 @@ function setupEventListeners() {
         }
     });
 
-    // 자동 로드
+    // 상/하차지 입력 시 자동 로드
     const handleLocationInput = () => {
         const fromIn = getEl('from-center');
         const toIn = getEl('to-center');
@@ -63,27 +68,16 @@ function setupEventListeners() {
         if((type === '화물운송' || type === '대기') && from && to) {
             const key = `${from}-${to}`;
             const incomeEl = getEl('income');
-            if(incomeEl) {
-                if(Data.MEM_FARES[key]) incomeEl.value = (Data.MEM_FARES[key]/10000).toFixed(2);
-                else incomeEl.value = ''; 
-            }
+            if(incomeEl && Data.MEM_FARES[key]) incomeEl.value = (Data.MEM_FARES[key]/10000).toFixed(2);
             const distEl = getEl('manual-distance');
-            if(distEl) {
-                if(Data.MEM_DISTANCES[key]) distEl.value = Data.MEM_DISTANCES[key];
-                else distEl.value = ''; 
-            }
-            const costEl = getEl('cost');
-            if(costEl) {
-                if(Data.MEM_COSTS[key]) costEl.value = (Data.MEM_COSTS[key]/10000).toFixed(2);
-                else costEl.value = ''; 
-            }
+            if(distEl && Data.MEM_DISTANCES[key]) distEl.value = Data.MEM_DISTANCES[key];
         }
         UI.updateAddressDisplay();
     };
     getEl('from-center')?.addEventListener('input', handleLocationInput);
     getEl('to-center')?.addEventListener('input', handleLocationInput);
 
-    // 버튼 동작들
+    // 기록 관리 버튼들 (?. 사용하여 존재할 때만 연결)
     getEl('btn-register-trip')?.addEventListener('click', () => {
         const formData = UI.getFormDataWithoutTime();
         Data.addRecord({ id: Date.now(), date: getEl('date').value, time: getEl('time').value, ...formData });
@@ -104,13 +98,6 @@ function setupEventListeners() {
         UI.resetForm();
         updateAllDisplays();
     });
-    getEl('btn-trip-cancel')?.addEventListener('click', () => {
-        const formData = UI.getFormDataWithoutTime();
-        Data.addRecord({ id: Date.now(), date: Utils.getTodayString(), time: Utils.getCurrentTimeString(), ...formData, type: '운행취소' });
-        Utils.showToast('취소됨');
-        UI.resetForm();
-        updateAllDisplays();
-    });
     getEl('btn-save-general')?.addEventListener('click', () => {
         const formData = UI.getFormDataWithoutTime();
         Data.addRecord({ id: Date.now(), date: getEl('date').value, time: getEl('time').value, ...formData });
@@ -119,7 +106,7 @@ function setupEventListeners() {
         updateAllDisplays();
     });
 
-    // 수정 완료/삭제 버튼
+    // ✅ 수정 모드 버튼 그룹
     getEl('btn-update-record')?.addEventListener('click', () => {
         const id = parseInt(getEl('edit-id').value);
         const index = Data.MEM_RECORDS.findIndex(r => r.id === id);
@@ -143,27 +130,8 @@ function setupEventListeners() {
     });
     getEl('btn-cancel-edit')?.addEventListener('click', UI.resetForm);
 
-    getEl('btn-edit-start-trip')?.addEventListener('click', () => {
-        const id = parseInt(getEl('edit-id').value);
-        const index = Data.MEM_RECORDS.findIndex(r => r.id === id);
-        if (index > -1) {
-            Data.MEM_RECORDS[index].date = Utils.getTodayString();
-            Data.MEM_RECORDS[index].time = Utils.getCurrentTimeString();
-            Data.saveData();
-            Utils.showToast('시작 시간 현재로 변경');
-            UI.resetForm();
-            updateAllDisplays();
-        }
-    });
-    getEl('btn-edit-end-trip')?.addEventListener('click', () => {
-        Data.addRecord({ id: Date.now(), date: Utils.getTodayString(), time: Utils.getCurrentTimeString(), type: '운행종료', distance: 0, cost: 0, income: 0 });
-        Utils.showToast('운행 종료됨');
-        UI.resetForm();
-        updateAllDisplays();
-    });
-
-    getEl('refresh-btn')?.addEventListener('click', () => location.reload());
-    getEl('today-date-picker')?.addEventListener('change', () => updateAllDisplays());
+    // 날짜 이동
+    getEl('refresh-btn')?.addEventListener('click', () => { UI.resetForm(); location.reload(); });
     getEl('prev-day-btn')?.addEventListener('click', () => moveDate(-1));
     getEl('next-day-btn')?.addEventListener('click', () => moveDate(1));
 
@@ -177,32 +145,20 @@ function setupEventListeners() {
         Stats.displayCurrentMonthData(); 
     });
     getEl('back-to-main-btn')?.addEventListener('click', () => { 
-        getEl('main-page')?.classList.remove("hidden"); 
-        getEl('settings-page')?.classList.add("hidden"); 
-        getEl('go-to-settings-btn')?.classList.remove("hidden"); 
-        getEl('back-to-main-btn')?.classList.add("hidden"); 
-        updateAllDisplays(); 
+        if(window.location.pathname.includes('settings.html')) {
+            window.location.href = 'index.html';
+        } else {
+            getEl('main-page')?.classList.remove("hidden"); 
+            getEl('settings-page')?.classList.add("hidden"); 
+            getEl('go-to-settings-btn')?.classList.remove("hidden"); 
+            getEl('back-to-main-btn')?.classList.add("hidden"); 
+            updateAllDisplays(); 
+        }
     });
 
-    getEl('center-search-input')?.addEventListener('input', (e) => UI.displayCenterList(e.target.value));
-
-    document.querySelectorAll('.tab-btn').forEach(btn => { 
-        btn.addEventListener("click", () => {
-            if(btn.parentElement.classList.contains('view-tabs')) {
-                document.querySelectorAll('.view-tabs .tab-btn').forEach(b => b.classList.remove("active"));
-                btn.classList.add("active");
-                document.querySelectorAll('.view-content').forEach(c => c.classList.remove('active'));
-                getEl(btn.dataset.view + "-view")?.classList.add("active");
-                updateAllDisplays();
-            }
-        });
-    });
-
-    getEl('type')?.addEventListener('change', UI.toggleUI);
-    
-    // 데이터 백업
+    // 데이터 관리 버튼
     getEl('export-json-btn')?.addEventListener('click', () => { 
-        const data = { records: Data.MEM_RECORDS, centers: Data.MEM_CENTERS, locations: Data.MEM_LOCATIONS, fares: Data.MEM_FARES, distances: Data.MEM_DISTANCES, costs: Data.MEM_COSTS }; 
+        const data = { records: Data.MEM_RECORDS, centers: Data.MEM_CENTERS, locations: Data.MEM_LOCATIONS }; 
         const b = new Blob([JSON.stringify(data,null,2)],{type:"application/json"}); 
         const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download=`backup_${Utils.getTodayString()}.json`; 
         a.click(); 
@@ -217,7 +173,6 @@ function updateAllDisplays() {
     Stats.displayDailyRecords();
     Stats.displayWeeklyRecords();
     Stats.displayMonthlyRecords();
-    renderFrequentLocationButtons();
 }
 
 function initialSetup() {
@@ -227,24 +182,9 @@ function initialSetup() {
     
     const todayStr = Utils.getTodayString();
     const nowTime = Utils.getCurrentTimeString();
-    const dIn = document.getElementById('date');
-    const tIn = document.getElementById('time');
-    const picker = document.getElementById('today-date-picker');
-    
-    if(dIn) dIn.value = todayStr;
-    if(tIn) tIn.value = nowTime;
-    if(picker) picker.value = todayStr;
-
-    // 년월 선택 박스 생성
-    const y = new Date().getFullYear();
-    const yrs = []; for(let i=0; i<5; i++) yrs.push(`<option value="${y-i}">${y-i}년</option>`);
-    ['daily-year-select', 'weekly-year-select', 'monthly-year-select', 'print-year-select'].forEach(id => {
-        const el = document.getElementById(id); if(el) el.innerHTML = yrs.join('');
-    });
-    const ms = []; for(let i=1; i<=12; i++) ms.push(`<option value="${i.toString().padStart(2,'0')}">${i}월</option>`);
-    ['daily-month-select', 'weekly-month-select', 'print-month-select'].forEach(id => {
-        const el = document.getElementById(id); if(el) { el.innerHTML = ms.join(''); el.value = (new Date().getMonth()+1).toString().padStart(2,'0'); }
-    });
+    if(document.getElementById('date')) document.getElementById('date').value = todayStr;
+    if(document.getElementById('time')) document.getElementById('time').value = nowTime;
+    if(document.getElementById('today-date-picker')) document.getElementById('today-date-picker').value = todayStr;
 
     setupEventListeners();
     updateAllDisplays();
@@ -259,32 +199,6 @@ function moveDate(offset) {
     dateObj.setDate(dateObj.getDate() + offset);
     picker.value = dateObj.toISOString().slice(0, 10);
     updateAllDisplays();
-}
-
-function renderFrequentLocationButtons() {
-    const fromContainer = document.getElementById('top-from-centers');
-    const toContainer = document.getElementById('top-to-centers');
-    if (!fromContainer || !toContainer) return;
-    const fromCounts = {};
-    const toCounts = {};
-    Data.MEM_RECORDS.slice(-50).forEach(r => {
-        if(r.from) fromCounts[r.from] = (fromCounts[r.from] || 0) + 1;
-        if(r.to) toCounts[r.to] = (toCounts[r.to] || 0) + 1;
-    });
-    const buildButtons = (counts, container, targetId) => {
-        container.innerHTML = '';
-        Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,5).forEach(([name]) => {
-            const btn = document.createElement('button');
-            btn.type = 'button'; btn.className = 'quick-loc-btn'; btn.textContent = name;
-            btn.onclick = () => { 
-                const el = document.getElementById(targetId);
-                if(el) { el.value = name; el.dispatchEvent(new Event('input')); }
-            };
-            container.appendChild(btn);
-        });
-    };
-    buildButtons(fromCounts, fromContainer, 'from-center');
-    buildButtons(toCounts, toContainer, 'to-center');
 }
 
 document.addEventListener("DOMContentLoaded", initialSetup);

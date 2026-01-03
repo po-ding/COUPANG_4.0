@@ -11,18 +11,27 @@
         <div class="page-nav">
             <h1 class="logo">cargo<span class="logo-point">note</span></h1>
             <div class="nav-buttons">
-                <!-- ✅ ID를 main.js와 맞춤 -->
                 <button type="button" id="back-to-main-btn">← 기록부로</button>
             </div>
         </div>
 
-        <div id="main-page" class="hidden"></div>
+        <div id="main-page" class="hidden"></div> <!-- main.js 오류 방지용 -->
 
         <div id="settings-page">
-            <h2>데이터 관리</h2>
-            <div class="action-btn-group">
+            <h2>데이터 요약</h2>
+            <div class="summary-grid">
+                <div class="metric-card"><span class="metric-label">총 운행거리</span><span class="metric-value" id="cumulative-total-mileage">-</span></div>
+            </div>
+
+            <h2 id="toggle-center-management" class="collapsible-header">운송 지역 관리</h2>
+            <div id="center-management-body" class="collapsible-body hidden">
+                <input type="text" id="center-search-input" placeholder="검색...">
+                <div id="center-list-container"></div>
+            </div>
+
+            <h2 id="toggle-data-management" class="collapsible-header">데이터 관리</h2>
+            <div id="data-management-body" class="collapsible-body hidden">
                 <button id="export-json-btn">전체 백업</button>
-                <button id="clear-btn" style="background-color:red">데이터 삭제</button>
             </div>
         </div>
     </div>
