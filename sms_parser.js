@@ -26,57 +26,71 @@ export function parseSmsText() {
     const sortedCenters = [...Data.MEM_CENTERS].sort((a, b) => b.length - a.length);
 
     blocks.forEach((block) => {
-        const line = block.trim();
-        if(!line || line.length < 5 || /^\d+\.\d+$/.test(line)) return; 
+        const rawLine = block.trim();
+        if(!rawLine || rawLine.length < 5 || /^\d+\.\d+$/.test(rawLine)) return; 
         
-        // 2. 불필요한 정보 제거 (층간 이동, 시간, 호수 등)
-        let cleanedLine = line.replace(/\d+층\s*->\s*\d+층/g, " ");
+        // 2. [매우 중요] 층간 이동 화살표 미리 제거하여 상하차 구분자와의 혼동 방지
+        let cleanedLine = rawLine.replace(/\d+층\s*->\s*\d+층/g, " ");
+        
+        // 3. 기타 노이즈(시간, 호수, 톤수 등) 제거
         cleanedLine = cleanedLine.replace(/\[?\d+호\]?|\d{1,2}:\d{2}|[1-9][0-9]?T|\d+층|\d+\s*호/g, " ");
-
+        
         /**
-         * [핵심: 지능형 매칭 함수]
-         * 문자의 "인천32물류센터" -> 내 등록지 "인천31.32.41.42" 연결
+         * [지능형 매칭 알고리즘]
+         * 문장에서 내가 등록한 지역명(MEM_CENTERS)이 있는지 위치별로 찾습니다.
          */
-        const findBestMatch = (fullText) => {
-            // A. 문자에서 불필요한 수식어 제거 (어근 추출)
-            const rootWord = fullText.replace(/물류센터|센터|HUB|하브/g, "").trim();
+        let matches = [];
+        
+        // 검색용 복사본
+        let tempLine = cleanedLine.toUpperCase();
+
+        sortedCenters.forEach(center => {
+            const centerUpper = center.toUpperCase();
             
-            // B. 등록지 목록에서 매칭 시도
-            for (let center of sortedCenters) {
-                // 1) 등록지 이름이 문자 어근에 포함되어 있는가? (예: 등록지 "인천"이 "인천32"에 포함)
-                if (rootWord.includes(center)) return center;
-                
-                // 2) 혹은 등록지 이름(인천31.32.41.42)이 문자 어근(인천32)의 핵심 단어를 포함하는가?
-                const baseName = center.substring(0, 2); // '인천', '안성' 등 앞 2글자
-                if (rootWord.startsWith(baseName)) {
-                    // 숫자까지 포함해서 더 정밀하게 체크 (예: '32'가 '31.32.41.42' 안에 있는지)
-                    const digits = rootWord.match(/\d+/);
-                    if (digits && center.includes(digits[0])) return center;
-                    // 숫자가 없더라도 앞글자가 같으면 일단 매칭
-                    if (!digits) return center;
+            // A. 이름 전체가 문장에 포함되어 있는지 먼저 체크
+            let pos = tempLine.indexOf(centerUpper);
+            
+            // B. [그룹 매칭] 이름에 숫자가 포함된 경우 (예: "인천31.32.41.42")
+            // 문자의 "인천32"에서 "32"라는 숫자만 뽑아 등록지 이름에 있는지 확인
+            const numberMatch = cleanedLine.match(/\d+/); // 문장에서 숫자 추출
+            if (pos === -1 && numberMatch) {
+                const num = numberMatch[0];
+                // 내 등록지에 "인천"이 있고 "32"도 있다면 매칭 성공
+                if (center.includes(num) && (center.includes(cleanedLine.substring(0, 2)) || center.includes("인천") || center.includes("안성"))) {
+                    pos = cleanedLine.indexOf(num);
                 }
             }
-            return null;
-        };
 
-        // 3. 상하차 구간 분리 시도 (화살표 기준)
-        let fromPart = "", toPart = "";
-        if (cleanedLine.includes("->")) {
-            [fromPart, toPart] = cleanedLine.split("->");
+            if (pos !== -1) {
+                matches.push({ name: center, index: pos });
+                // 중복 매칭 방지를 위해 찾은 자리를 공백으로 가림
+                let placeholder = " ".repeat(center.length);
+                tempLine = tempLine.substring(0, pos) + placeholder + tempLine.substring(pos + center.length);
+            }
+        });
+
+        // 문장에서 나타난 순서대로 정렬 (먼저 나오는게 상차지)
+        matches.sort((a, b) => a.index - b.index);
+
+        let finalFrom = "";
+        let finalTo = "";
+
+        if (matches.length >= 2) {
+            // 등록된 지명이 2개 이상 발견됨
+            finalFrom = matches[0].name;
+            finalTo = matches[1].name;
         } else {
-            // 화살표가 없으면 공백 기준으로 대략 분리
-            const words = cleanedLine.split(/\s+/).filter(w => w.length > 1);
-            fromPart = words[0] || "";
-            toPart = words[1] || "";
+            // 매칭 실패 시 수동 분리 (화살표 기준)
+            const parts = cleanedLine.split(/->|>/).map(p => p.trim());
+            if (parts.length >= 2) {
+                finalFrom = matches[0]?.name || parts[0].split(/[(\s]/)[0];
+                finalTo = parts[1].split(/[(\s]/)[0];
+            } else {
+                return; // 분석 불능
+            }
         }
 
-        // 4. 추출된 파트별 매칭 진행
-        let finalFrom = findBestMatch(fromPart) || fromPart.split(/[(\s]/)[0];
-        let finalTo = findBestMatch(toPart) || toPart.split(/[(\s]/)[0];
-
-        if(!finalFrom || !finalTo) return;
-
-        // 5. 리스트 UI 생성
+        // 4. 리스트 UI 생성
         const itemDiv = document.createElement('div');
         itemDiv.className = "sms-item-card";
         itemDiv.style = "background:white; padding:12px; border-radius:6px; margin-bottom:10px; border:1px solid #eee; box-shadow: 0 2px 4px rgba(0,0,0,0.05); display:flex; justify-content:space-between; align-items:center;";
@@ -97,7 +111,7 @@ export function parseSmsText() {
         foundCount++;
     });
 
-    if(foundCount === 0) resultsDiv.innerHTML = "<p style='text-align:center; color:#666; font-size:0.9em;'>등록된 지역명과 일치하는 항목을 찾지 못했습니다.</p>";
+    if(foundCount === 0) resultsDiv.innerHTML = "<p style='text-align:center; color:#666; font-size:0.9em;'>등록된 지역 목록과 일치하는 구간을 찾지 못했습니다.</p>";
 }
 
 /**
