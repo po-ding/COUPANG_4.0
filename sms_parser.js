@@ -15,61 +15,73 @@ export function parseSmsText() {
     resultsDiv.innerHTML = "";
     resultsDiv.classList.remove('hidden');
 
-    const blocks = input.split(/\n\s*\n|\[Web발신\]|Web발신/); 
+    // 1. 건별 분리 (날짜형식이나 Web발신, 혹은 빈 줄 기준)
+    // 줄바꿈을 기준으로 한 줄씩 처리하되, 의미 없는 줄(날짜 등)은 거릅니다.
+    const lines = input.split('\n'); 
     let foundCount = 0;
 
-    // 내 지역 목록을 긴 순서대로 정렬 (인천32물류센터를 인천보다 먼저 매칭)
+    // 내 지역 목록 정렬 (긴 이름 우선 매칭)
     const sortedCenters = [...Data.MEM_CENTERS].sort((a, b) => b.length - a.length);
 
-    blocks.forEach((block) => {
-        const rawLine = block.trim();
-        if(!rawLine || rawLine.length < 5 || /^\d+\.\d+$/.test(rawLine)) return; 
+    lines.forEach((line) => {
+        let text = line.trim();
+        // 너무 짧거나 날짜(1.2), Web발신 등은 무시
+        if(!text || text.length < 5 || /^\d+\.\d+$/.test(text) || text.includes("Web발신")) return;
         
-        // 1. [핵심] 층간 이동 화살표 미리 제거 (상하차 구분자와 혼동 방지)
-        let cleanedLine = rawLine.replace(/\d+층\s*->\s*\d+층/g, " ");
-        
-        // 2. 시간, 호수, 톤수 등 노이즈 제거
-        cleanedLine = cleanedLine.replace(/\[?\d+호\]?|\d{1,2}:\d{2}|[1-9][0-9]?T|\d+층|\d+\s*호/g, " ");
-        
-        let matches = [];
-        let tempLine = cleanedLine.toUpperCase();
+        // 2. [노이즈 제거] 상하차 정보 외의 모든 잡동사니 제거
+        // 층간이동(7층 -> 6층), 시간(10:20), 톤수(5T), 호수([1호]) 등 제거
+        let cleaned = text.replace(/\d+층\s*->\s*\d+층/g, " ");
+        cleaned = cleaned.replace(/\[?\d+호\]?|\d{1,2}:\d{2}|[1-9][0-9]?T|\d+층|\d+\s*호/g, " ");
+        // 괄호 안의 내용도 일단 공백으로 치환 (단, 안의 내용이 지명일 수 있으므로 주의)
+        cleaned = cleaned.replace(/\(([^)]+)\)/g, " $1 ");
 
-        // 3. 지능형 매칭 (글자 매칭 + 숫자 그룹 매칭)
+        // 3. [지능형 매칭] cleaned 문장에서 등록된 지명 찾기
+        let matches = [];
+        let tempText = cleaned.toUpperCase();
+
         sortedCenters.forEach(center => {
             const centerUpper = center.toUpperCase();
+            let pos = tempText.indexOf(centerUpper);
             
-            // A. 이름 전체가 포함된 경우
-            let pos = tempLine.indexOf(centerUpper);
-            
-            // B. 이름에 숫자가 포함된 그룹 매칭 (예: "인천32" -> "인천31.32.41.42")
-            if (pos === -1) {
-                const numInSms = cleanedLine.match(/\d+/); // 문자의 "32"
-                if (numInSms && center.includes(numInSms[0])) {
-                    // 숫자가 등록지 명칭에 포함되어 있고, 앞 2글자(지역명)가 일치하면 매칭
-                    const prefix = cleanedLine.substring(0, 2);
+            // 일반 매칭 성공 시
+            if (pos !== -1) {
+                matches.push({ name: center, index: pos });
+                // 찾은 자리는 공백으로 지워서 중복 매칭 방지
+                tempText = tempText.substring(0, pos) + " ".repeat(center.length) + tempText.substring(pos + center.length);
+            } 
+            // [그룹 매칭] 인천32 -> 인천31.32.41.42 자동 연결
+            else {
+                const numInText = cleaned.match(/\d+/); // 문자의 숫자(32)
+                if (numInText && center.includes(numInText[0])) {
+                    // 숫자가 등록명에 포함되어 있고, 앞 2글자가 지역명과 유사하면 매칭
+                    const prefix = cleaned.substring(0, 2);
                     if (center.includes(prefix)) {
-                        pos = cleanedLine.indexOf(numInSms[0]);
+                        pos = cleaned.indexOf(numInText[0]);
+                        matches.push({ name: center, index: pos });
                     }
                 }
             }
-
-            if (pos !== -1) {
-                matches.push({ name: center, index: pos });
-                // 중복 매칭 방지를 위해 가림 처리
-                let placeholder = " ".repeat(center.length);
-                tempLine = tempLine.substring(0, pos) + placeholder + tempLine.substring(pos + center.length);
-            }
         });
 
-        // 문장 내 등장 순서대로 정렬
+        // 문장에서 나타난 순서대로 정렬
         matches.sort((a, b) => a.index - b.index);
 
-        if (matches.length < 2) return; // 상/하차지 2개가 안 나오면 패스
+        // 상차지와 하차지(최소 2개)가 발견되어야 함
+        if (matches.length < 2) {
+            // 매칭 실패 시 공백 기준으로 잘라서 첫 단어, 두 번째 단어라도 시도
+            const words = cleaned.split(/\s+/).filter(w => w.length > 1);
+            if (words.length >= 2) {
+                matches = [
+                    { name: words[0], index: 0 },
+                    { name: words[1], index: 1 }
+                ];
+            } else return;
+        }
 
         const finalFrom = matches[0].name;
         const finalTo = matches[1].name;
 
-        // 4. 결과 UI 생성
+        // 4. 결과 UI 생성 (중복 제거를 위해 set 사용 가능하나 여기선 생략)
         const itemDiv = document.createElement('div');
         itemDiv.className = "sms-item-card";
         itemDiv.style = "background:white; padding:12px; border-radius:6px; margin-bottom:10px; border:1px solid #eee; box-shadow: 0 2px 4px rgba(0,0,0,0.05); display:flex; justify-content:space-between; align-items:center;";
@@ -90,9 +102,12 @@ export function parseSmsText() {
         foundCount++;
     });
 
-    if(foundCount === 0) resultsDiv.innerHTML = "<p style='text-align:center; color:#666; font-size:0.9em;'>등록된 지역 목록과 일치하는 구간을 찾지 못했습니다.</p>";
+    if(foundCount === 0) resultsDiv.innerHTML = "<p style='text-align:center; color:#666; font-size:0.9em;'>인식된 구간이 없습니다.</p>";
 }
 
+/**
+ * 즉시 운행 등록 (새로고침 없음)
+ */
 export function registerParsedTrip(btn, from, to) {
     const key = `${from}-${to}`;
     const savedIncome = Data.MEM_FARES[key] || 0;
@@ -113,13 +128,13 @@ export function registerParsedTrip(btn, from, to) {
 
     Data.addRecord(newRecord);
     
-    // 버튼 상태 변경
+    // 버튼 상태만 변경하여 리프레시 방지
     btn.disabled = true;
     btn.textContent = "등록 완료";
     btn.style.background = "#bdc3c7";
     btn.closest('.sms-item-card').style.background = "#f0fdf4";
 
-    Utils.showToast("등록되었습니다.");
+    Utils.showToast(`${from} → ${to} 등록되었습니다.`);
 
     if (window.updateAllDisplays) {
         window.updateAllDisplays();
