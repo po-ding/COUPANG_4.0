@@ -1,6 +1,9 @@
 import * as Data from './data.js';
 import * as Utils from './utils.js';
 
+/**
+ * 문자 분석 버튼 클릭 시 실행
+ */
 export function parseSmsText() {
     const inputEl = document.getElementById('sms-input');
     const input = inputEl ? inputEl.value : "";
@@ -15,41 +18,62 @@ export function parseSmsText() {
     resultsDiv.innerHTML = "";
     resultsDiv.classList.remove('hidden');
 
-    // 1. 건별 분리 (빈 줄 또는 Web발신 기준)
-    const blocks = input.split(/\n\s*\n|Web발신/); 
+    // 1. 건별 분리 (Web발신 또는 빈 줄 기준)
+    // 제공된 샘플처럼 한 줄 띄어쓰기로 구분된 경우를 모두 잡습니다.
+    const blocks = input.split(/\n\s*\n|\[Web발신\]|Web발신/); 
     let foundCount = 0;
 
     blocks.forEach((block) => {
-        if(!block.trim()) return;
+        const line = block.trim();
+        if(!line || line.length < 5) return; // 너무 짧거나 빈 줄 패스
         
-        // 2. 불필요한 정보 제거 (시간, 호수, 톤수 등)
-        let cleanText = block.replace(/\[?\d+호\]?|\d{1,2}:\d{2}|\d+T|\d+톤|\d+층|상차:|하차:|상차지:|하차지:/g, " ").trim();
-        
-        // 3. 상하차지 분리 (쉼표, 화살표, 줄바꿈, 다중공백 기준)
-        let parts = cleanText.split(/,|\s*->\s*|\s*>\s*|\n|\s{2,}/);
-        
-        // 공백 하나로만 구분된 경우 대비
-        if (parts.length < 2) parts = cleanText.split(/\s+/);
+        // 2. 상/하차 구간 대략적 분리
+        // "->" 기호가 있으면 그것을 기준으로, 없으면 공백을 기준으로 분리 시도
+        let fromPart = "";
+        let toPart = "";
 
-        const validParts = parts.map(p => p.trim()).filter(p => p.length >= 2);
-        if (validParts.length < 2) return; 
+        if (line.includes("->")) {
+            const splitPoint = line.split("->");
+            fromPart = splitPoint[0];
+            toPart = splitPoint[1];
+        } else {
+            // 화살표가 없는 경우 (예: XRC12(LGL) 고양1센터) 
+            // 단어들을 배열로 만들어 앞부분을 상차, 뒷부분을 하차로 추정
+            const words = line.split(/\s+/).filter(w => !w.match(/\d{1,2}:\d{2}|[1-9]T|\d+층|\d+호/));
+            if (words.length >= 2) {
+                fromPart = words[0];
+                toPart = words[1];
+            }
+        }
 
-        let rawFrom = validParts[0];
-        let rawTo = validParts[1];
-
-        // 4. 이름 치환 로직: 기존 등록지(MEM_CENTERS)에 있는 이름인지 확인
-        const matchRegisteredName = (name) => {
-            // 기존 등록된 이름들 중 문자의 단어가 포함되거나, 등록된 이름이 문자의 단어를 포함하는 경우 검색
-            const matched = Data.MEM_CENTERS.find(center => 
-                name.includes(center) || center.includes(name)
+        /**
+         * [핵심 매칭 로직] 
+         * 문자에 "XRC13(판토스)"가 있어도 내 리스트에 "XRC13"이 있다면 "XRC13"을 선택
+         */
+        const extractRegisteredName = (text) => {
+            if(!text) return "";
+            // 불필요한 기호 제거
+            let clean = text.replace(/\[|\]|\(|\)/g, " ").trim();
+            
+            // 내 지역 목록(MEM_CENTERS) 중에서 이 문장에 포함된 단어가 있는지 전수 조사
+            // 긴 이름부터 매칭하여 정확도를 높임
+            const sortedCenters = [...Data.MEM_CENTERS].sort((a, b) => b.length - a.length);
+            const matched = sortedCenters.find(center => 
+                line.toUpperCase().includes(center.toUpperCase()) && text.toUpperCase().includes(center.toUpperCase())
             );
-            return matched || name; // 매칭되는게 있으면 기존 등록명, 없으면 문자 그대로 사용
+            
+            if (matched) return matched;
+
+            // 매칭되는게 없으면 괄호나 공백 앞의 첫 단어만 추출
+            return text.split(/[(\s]/)[0].replace(/\[|\]/g, "").trim();
         };
 
-        const finalFrom = matchRegisteredName(rawFrom);
-        const finalTo = matchRegisteredName(rawTo);
+        const finalFrom = extractRegisteredName(fromPart);
+        const finalTo = extractRegisteredName(toPart);
 
-        // 5. 결과 리스트 UI 생성
+        if(!finalFrom || !finalTo || finalFrom === finalTo) return;
+
+        // 3. 리스트 항목 생성
         const itemDiv = document.createElement('div');
         itemDiv.className = "sms-item-card";
         itemDiv.style = "background:white; padding:12px; border-radius:6px; margin-bottom:10px; border:1px solid #eee; box-shadow: 0 2px 4px rgba(0,0,0,0.05);";
@@ -72,23 +96,24 @@ export function parseSmsText() {
         foundCount++;
     });
 
-    if(foundCount === 0) resultsDiv.innerHTML = "<p style='text-align:center; color:#666;'>분석된 구간이 없습니다.</p>";
+    if(foundCount === 0) resultsDiv.innerHTML = "<p style='text-align:center; color:#666; font-size:0.9em;'>인식된 구간이 없습니다. 지역 명칭을 확인해주세요.</p>";
 }
 
 /**
- * 분석 리스트에서 즉시 저장 (새로고침 없음)
+ * 개별 리스트의 '운행 등록' 버튼 클릭 시 실행
+ * 시간 입력 안함, 리프레시 없음
  */
 export function registerParsedTrip(btn, from, to) {
     const key = `${from}-${to}`;
     
-    // 기존 데이터에서 해당 구간의 운임과 거리 가져오기
+    // 기존에 등록된 이력이 있다면 운임과 거리를 자동 연동
     const savedIncome = Data.MEM_FARES[key] || 0;
     const savedDistance = Data.MEM_DISTANCES[key] || 0;
 
     const newRecord = {
         id: Date.now() + Math.floor(Math.random() * 1000),
         date: Utils.getTodayString(),
-        time: "", // 시간은 입력하지 않음
+        time: "", // 시간은 비워둠 (상세에서 수정)
         type: "화물운송",
         from: from,
         to: to,
@@ -103,19 +128,19 @@ export function registerParsedTrip(btn, from, to) {
         mileage: 0
     };
 
-    // 데이터 추가 및 저장
+    // 1. 데이터 저장
     Data.addRecord(newRecord);
     
-    // 버튼 및 카드 상태 변경 (UI 피드백)
+    // 2. 버튼 상태 업데이트 (항목 리프레시 방지)
     btn.disabled = true;
     btn.textContent = "등록 완료";
     btn.style.background = "#bdc3c7";
-    btn.closest('.sms-item-card').style.background = "#f9f9f9";
+    btn.closest('.sms-item-card').style.background = "#f0fdf4";
     btn.closest('.sms-item-card').style.border = "1px solid #28a745";
 
-    Utils.showToast(`${from} -> ${to} 등록되었습니다.`);
+    Utils.showToast(`${from} → ${to} 등록되었습니다.`);
 
-    // 메인 화면 테이블 즉시 갱신 (전체 리프레시 아님)
+    // 3. 메인 화면 테이블 즉시 갱신 (전체 리프레시 아님)
     if (window.updateAllDisplays) {
         window.updateAllDisplays();
     }
