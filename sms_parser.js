@@ -1,6 +1,9 @@
 import * as Data from './data.js';
 import * as Utils from './utils.js';
 
+/**
+ * [최종형] 문자 분석 - 지능형 매칭 및 오매칭 방지
+ */
 export function parseSmsText() {
     const inputEl = document.getElementById('sms-input');
     const input = inputEl ? inputEl.value : "";
@@ -15,70 +18,66 @@ export function parseSmsText() {
     resultsDiv.innerHTML = "";
     resultsDiv.classList.remove('hidden');
 
-    // 1. 의미 있는 줄만 필터링 (날짜줄, Web발신 제외)
+    // 1. 배차 문자 건별 분리 (줄바꿈 기준 정밀 분석)
     const lines = input.split('\n').filter(line => {
         const l = line.trim();
         return l.length > 5 && !/^\d+\.\d+$/.test(l) && !l.includes("Web발신");
     });
 
     let foundCount = 0;
-    // 내 등록지 목록 (긴 이름 우선순위)
+    // 내 등록지 목록 (글자수 긴 이름 우선순위로 정확도 확보)
     const sortedCenters = [...Data.MEM_CENTERS].sort((a, b) => b.length - a.length);
 
     lines.forEach((line) => {
         let originalText = line.trim();
         
-        // 2. [노이즈 제거 단계 - 매우 중요]
-        // 상하차지와 관계없는 숫자 데이터를 먼저 삭제하여 오매칭(XRC11 등)을 원천 차단합니다.
-        let cleaned = originalText.replace(/\d+층\s*->\s*\d+층/g, " "); // 층간이동 화살표 제거
-        cleaned = cleaned.replace(/\[?\d+호\]?|\d+\s*호/g, " "); // [1호], 2 호 등 호수 제거 (오매칭 주범)
-        cleaned = cleaned.replace(/\d{1,2}:\d{2}/g, " "); // 시간(10:20) 제거
-        cleaned = cleaned.replace(/[1-9][0-9]?T/g, " "); // 톤수(5T) 제거
-        cleaned = cleaned.replace(/\d+층/g, " "); // 단독 층수 제거
+        // 2. [오매칭 방지용 노이즈 삭제]
+        // 지명 매칭에 방해되는 숫자 데이터를 미리 제거합니다.
+        let cleaned = originalText.replace(/\d+층\s*->\s*\d+층/g, " "); // 7층->6층 삭제
+        cleaned = cleaned.replace(/\[?\d+호\]?|\d+\s*호/g, " "); // [1호], 2 호 삭제 (XRC11 등 오인 방지)
+        cleaned = cleaned.replace(/\d{1,2}:\d{2}/g, " "); // 시간(10:20) 삭제
+        cleaned = cleaned.replace(/[1-9][0-9]?T/g, " "); // 톤수(5T, 11T) 삭제
+        cleaned = cleaned.replace(/\d+층/g, " "); // 단독 층수 삭제
 
         // 3. [지능형 매칭 알고리즘]
         let matches = [];
         let searchQueue = cleaned.toUpperCase();
 
-        // A. 1단계: 내 등록지 명칭이 문장에 통째로 있는지 검색 (정확도 1순위)
+        // A. 1단계: 내 등록지 명칭이 문장에 통째로 포함되어 있는지 검색 (XRC13 등)
         sortedCenters.forEach(center => {
             const centerUpper = center.toUpperCase();
             let pos = searchQueue.indexOf(centerUpper);
             if (pos !== -1) {
                 matches.push({ name: center, index: pos });
-                // 매칭된 영역은 공백처리하여 중복 검색 방지
+                // 매칭된 영역은 가려서 중복 검색 방지
                 searchQueue = searchQueue.substring(0, pos) + " ".repeat(center.length) + searchQueue.substring(pos + center.length);
             }
         });
 
-        // B. 2단계: 그룹 매칭 (예: 문자 "인천32" -> 등록지 "인천31.32.41.42")
-        // 아직 상하차지를 다 못 찾았을 경우에만 실행
+        // B. 2단계: 그룹 지능형 매칭 (인천32 -> 인천31.32.41.42)
         if (matches.length < 2) {
-            sortedCenters.forEach(center => {
-                // 이미 찾은 등록지는 스킵
-                if (matches.find(m => m.name === center)) return;
-
-                const digits = cleaned.match(/\d+/g); // 문자에 남은 숫자들 (예: 32)
-                if (digits) {
-                    digits.forEach(num => {
-                        // 숫자가 등록지 이름에 포함되어 있고(32), 지역명(인천)이 문장에 있으면 매칭
-                        const regionPrefix = center.substring(0, 2); 
-                        if (center.includes(num) && cleaned.includes(regionPrefix)) {
+            const digitsInSms = cleaned.match(/\d+/g); // 문자에 남은 숫자 추출 (예: 32)
+            if (digitsInSms) {
+                digitsInSms.forEach(num => {
+                    sortedCenters.forEach(center => {
+                        if (matches.find(m => m.name === center)) return;
+                        
+                        // 지역명(인천, 안성 등)이 같고, 숫자가 그룹명에 포함되어 있으면 매칭
+                        const prefix = center.substring(0, 2);
+                        if (cleaned.includes(prefix) && center.includes(num)) {
                             let pos = cleaned.indexOf(num);
-                            // 중복 위치 체크 후 추가
                             if (!matches.find(m => m.index === pos)) {
                                 matches.push({ name: center, index: pos });
                             }
                         }
                     });
-                }
-            });
+                });
+            }
         }
 
-        // 4. 문장 내 나타난 순서대로 정렬 (먼저 나오면 상차)
+        // 4. 문장 내 등장 순서대로 정렬 (먼저 나오면 상차)
         matches.sort((a, b) => a.index - b.index);
 
-        // 결과 확정
         let finalFrom = "";
         let finalTo = "";
 
@@ -86,7 +85,7 @@ export function parseSmsText() {
             finalFrom = matches[0].name;
             finalTo = matches[1].name;
         } else {
-            // 매칭 실패 시 Fallback (공백 기준 첫 단어들)
+            // 매칭 실패 시 Fallback (공백 기준 첫 두 단어)
             const words = cleaned.split(/\s+/).filter(w => w.trim().length >= 2);
             if (words.length >= 2) {
                 finalFrom = words[0];
@@ -94,7 +93,7 @@ export function parseSmsText() {
             } else return;
         }
 
-        // 5. UI 출력
+        // 5. UI 카드 생성
         const itemDiv = document.createElement('div');
         itemDiv.className = "sms-item-card";
         itemDiv.style = "background:white; padding:12px; border-radius:6px; margin-bottom:10px; border:1px solid #eee; box-shadow: 0 2px 4px rgba(0,0,0,0.05); display:flex; justify-content:space-between; align-items:center;";
@@ -115,31 +114,34 @@ export function parseSmsText() {
         foundCount++;
     });
 
-    if(foundCount === 0) resultsDiv.innerHTML = "<p style='text-align:center; color:#666; font-size:0.9em;'>구간을 분석하지 못했습니다. 등록된 지역명을 확인해주세요.</p>";
+    if(foundCount === 0) resultsDiv.innerHTML = "<p style='text-align:center; color:#666; font-size:0.9em;'>정확한 구간을 분석하지 못했습니다. 등록지 이름을 확인해주세요.</p>";
 }
 
 /**
- * 즉시 등록 함수 (원본 데이터 유지)
+ * 즉시 등록 함수 (상태 유지 및 테이블 갱신)
  */
 export function registerParsedTrip(btn, from, to) {
     const key = `${from}-${to}`;
+    // 기존 운임 및 거리 정보 자동 로드
     const savedIncome = Data.MEM_FARES[key] || 0;
     const savedDistance = Data.MEM_DISTANCES[key] || 0;
 
     Data.addRecord({
         id: Date.now() + Math.floor(Math.random() * 1000),
         date: Utils.getTodayString(),
-        time: "", 
+        time: "", // 시간은 비워둠
         type: "화물운송",
         from: from, to: to, distance: savedDistance, income: savedIncome,
         cost: 0, liters: 0, unitPrice: 0, brand: "", expenseItem: "", supplyItem: "", mileage: 0
     });
     
+    // UI 상태 변경 (리스트 유지)
     btn.disabled = true;
     btn.textContent = "등록 완료";
     btn.style.background = "#bdc3c7";
     btn.closest('.sms-item-card').style.background = "#f0fdf4";
 
     Utils.showToast(`${from} → ${to} 등록되었습니다.`);
+    // 메인 테이블 즉시 업데이트
     if (window.updateAllDisplays) window.updateAllDisplays();
 }
