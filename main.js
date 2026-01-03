@@ -7,16 +7,12 @@ import { parseSmsText, registerParsedTrip } from './sms_parser.js';
 function setupEventListeners() {
     const getEl = (id) => document.getElementById(id);
 
-    // SMS 인식 버튼 연결
+    // [추가] SMS 분석 버튼 및 전역 연결
     getEl('btn-parse-sms')?.addEventListener('click', parseSmsText);
-    
-    // 동적 생성 버튼을 위해 전역 window 객체에 함수 등록
     window.registerParsedTrip = registerParsedTrip;
-    
-    // UI 업데이트 함수를 sms_parser에서 쓸 수 있게 노출
     window.updateAllDisplays = updateAllDisplays;
 
-    // 모바일 아코디언
+    // 모바일 아코디언 토글
     const toggleSections = ['datetime', 'type'];
     toggleSections.forEach(section => {
         const legend = getEl(`legend-${section}`);
@@ -31,7 +27,7 @@ function setupEventListeners() {
         }
     });
 
-    // 주소 복사
+    // 주소 클릭 시 복사
     getEl('address-display')?.addEventListener('click', (e) => {
         if (e.target.classList.contains('address-clickable')) {
             e.preventDefault(); e.stopPropagation();
@@ -40,7 +36,7 @@ function setupEventListeners() {
         }
     });
 
-    // 테이블 클릭 (수정모드)
+    // 테이블 클릭 (수정 모드 진입 및 주소 복사)
     document.querySelector('#today-records-table tbody')?.addEventListener('click', (e) => {
         const addrTarget = e.target.closest('.location-clickable');
         if (addrTarget) {
@@ -59,7 +55,7 @@ function setupEventListeners() {
         }
     });
 
-    // 상/하차지 입력
+    // 상/하차지 입력 시 자동 운임/거리 로드
     const handleLocationInput = () => {
         const fromIn = getEl('from-center');
         const toIn = getEl('to-center');
@@ -94,7 +90,7 @@ function setupEventListeners() {
     getEl('from-center')?.addEventListener('input', handleLocationInput);
     getEl('to-center')?.addEventListener('input', handleLocationInput);
 
-    // 버튼 액션들 - 요소가 화면에 있을 때만 연결
+    // 기록 저장/시작/종료/취소 버튼들
     getEl('btn-register-trip')?.addEventListener('click', () => {
         const formData = UI.getFormDataWithoutTime();
         if (formData.type === '화물운송' && formData.distance <= 0) { alert('운행거리를 입력해주세요.'); return; }
@@ -103,6 +99,7 @@ function setupEventListeners() {
         UI.resetForm();
         updateAllDisplays();
     });
+
     getEl('btn-start-trip')?.addEventListener('click', () => {
         const formData = UI.getFormDataWithoutTime();
         if (formData.type === '화물운송' && formData.distance <= 0) { alert('운행거리를 입력해주세요.'); return; }
@@ -113,12 +110,14 @@ function setupEventListeners() {
         if(getEl('today-date-picker')) getEl('today-date-picker').value = statDate;
         updateAllDisplays();
     });
+
     getEl('btn-end-trip')?.addEventListener('click', () => {
         Data.addRecord({ id: Date.now(), date: Utils.getTodayString(), time: Utils.getCurrentTimeString(), type: '운행종료', distance: 0, cost: 0, income: 0 });
         Utils.showToast('운행 종료됨');
         UI.resetForm();
         updateAllDisplays();
     });
+
     getEl('btn-trip-cancel')?.addEventListener('click', () => {
         const formData = UI.getFormDataWithoutTime();
         Data.addRecord({ id: Date.now(), date: Utils.getTodayString(), time: Utils.getCurrentTimeString(), ...formData, type: '운행취소' });
@@ -126,6 +125,7 @@ function setupEventListeners() {
         UI.resetForm();
         updateAllDisplays();
     });
+
     getEl('btn-save-general')?.addEventListener('click', () => {
         const formData = UI.getFormDataWithoutTime();
         if (formData.type === '지출' || formData.type === '수입') { if (formData.expenseItem) Data.updateExpenseItemData(formData.expenseItem); }
@@ -136,6 +136,8 @@ function setupEventListeners() {
         updateAllDisplays();
         if(formData.type === '주유소') Stats.displaySubsidyRecords();
     });
+
+    // 수정 모드 전용 버튼들
     getEl('btn-update-record')?.addEventListener('click', () => {
         const id = parseInt(getEl('edit-id').value);
         const index = Data.MEM_RECORDS.findIndex(r => r.id === id);
@@ -157,6 +159,7 @@ function setupEventListeners() {
             updateAllDisplays();
         }
     });
+
     getEl('btn-delete-record')?.addEventListener('click', () => {
         if(confirm('정말 삭제하시겠습니까?')) {
             const id = parseInt(getEl('edit-id').value);
@@ -169,7 +172,9 @@ function setupEventListeners() {
             updateAllDisplays();
         }
     });
+
     getEl('btn-cancel-edit')?.addEventListener('click', UI.resetForm);
+
     getEl('btn-edit-start-trip')?.addEventListener('click', () => {
         const nowTime = Utils.getCurrentTimeString();
         const nowDate = Utils.getTodayString();
@@ -186,6 +191,7 @@ function setupEventListeners() {
             updateAllDisplays();
         }
     });
+
     getEl('btn-edit-end-trip')?.addEventListener('click', () => {
         const nowTime = Utils.getCurrentTimeString();
         const nowDate = Utils.getTodayString();
@@ -206,12 +212,13 @@ function setupEventListeners() {
         updateAllDisplays();
     });
 
+    // 날짜 이동 및 피커 이벤트
     getEl('refresh-btn')?.addEventListener('click', () => { UI.resetForm(); location.reload(); });
     getEl('today-date-picker')?.addEventListener('change', () => updateAllDisplays());
     getEl('prev-day-btn')?.addEventListener('click', () => moveDate(-1));
     getEl('next-day-btn')?.addEventListener('click', () => moveDate(1));
 
-    // 일/주/월 화살표
+    // 일/주/월 선택 이벤트
     const changeDateSelect = (yId, mId, delta) => {
         const yEl = getEl(yId), mEl = getEl(mId);
         if(!yEl || !mEl) return;
@@ -236,7 +243,7 @@ function setupEventListeners() {
         getEl(id)?.addEventListener('change', updateAllDisplays);
     });
 
-    // 화면 전환 토글
+    // 화면 전환 (기록부 <-> 설정)
     getEl('go-to-settings-btn')?.addEventListener('click', () => { 
         getEl('main-page')?.classList.add("hidden"); 
         getEl('settings-page')?.classList.remove("hidden"); 
@@ -254,6 +261,7 @@ function setupEventListeners() {
         updateAllDisplays(); 
     });
 
+    // 콜랩서 및 지역 검색
     document.querySelectorAll('.collapsible-header').forEach(header => { 
         header.addEventListener("click", () => { 
             const body = header.nextElementSibling; 
@@ -264,10 +272,14 @@ function setupEventListeners() {
         }); 
     });
 
+    getEl('center-search-input')?.addEventListener('input', (e) => {
+        UI.displayCenterList(e.target.value);
+    });
+
+    // 조회 탭 전환
     document.querySelectorAll('.tab-btn').forEach(btn => { 
         btn.addEventListener("click", event => { 
             if(btn.parentElement.classList.contains('view-tabs')) { 
-                event.preventDefault(); 
                 document.querySelectorAll('.tab-btn').forEach(b => { if(b.parentElement.classList.contains('view-tabs')) b.classList.remove("active"); }); 
                 btn.classList.add("active"); 
                 document.querySelectorAll('.view-content').forEach(c => c.classList.remove('active')); 
@@ -278,6 +290,7 @@ function setupEventListeners() {
         });
     });
 
+    // 기타 수식 연동
     getEl('fuel-unit-price')?.addEventListener('input', () => { 
         const p=parseFloat(getEl('fuel-unit-price').value)||0; 
         const l=parseFloat(getEl('fuel-liters').value)||0; 
@@ -285,43 +298,21 @@ function setupEventListeners() {
     });
     getEl('type')?.addEventListener('change', UI.toggleUI);
     
-    // 글로벌 함수
+    // 글로벌 함수 등록
     window.viewDateDetails = (date) => { 
         const picker = getEl('today-date-picker');
         if(picker) picker.value = date; 
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove("active")); 
-        const todayTab = document.querySelector('.tab-btn[data-view="today"]');
-        if(todayTab) todayTab.classList.add("active"); 
+        document.querySelector('.tab-btn[data-view="today"]').classList.add("active"); 
         document.querySelectorAll('.view-content').forEach(c => c.classList.remove('active')); 
         getEl("today-view")?.classList.add("active"); 
         Stats.displayTodayRecords(date); 
     };
-    window.toggleAllSummaryValues = (gridElement) => { 
-        const items = gridElement.querySelectorAll('.summary-item'); 
-        const isShowing = gridElement.classList.toggle('active'); 
-        items.forEach(item => { 
-            const valueEl = item.querySelector('.summary-value'); 
-            if(isShowing) { item.classList.add('active'); valueEl.classList.remove('hidden'); } 
-            else { item.classList.remove('active'); valueEl.classList.add('hidden'); } 
-        }); 
-    };
+    
+    initOtherFeatures();
 }
 
 function initialSetup() {
-    // 날짜 및 시간 초기화 (가장 먼저 실행)
-    const todayStr = Utils.getTodayString();
-    const nowTime = Utils.getCurrentTimeString();
-    const dIn = document.getElementById('date');
-    const tIn = document.getElementById('time');
-    if(dIn) dIn.value = todayStr;
-    if(tIn) tIn.value = nowTime;
-
-    const picker = document.getElementById('today-date-picker');
-    if(picker) {
-        const statToday = Utils.getStatisticalDate(todayStr, nowTime);
-        picker.value = statToday;
-    }
-
     Data.loadAllData();
     UI.populateCenterDatalist();
     UI.populateExpenseDatalist();
@@ -335,13 +326,21 @@ function initialSetup() {
     ['daily-month-select', 'weekly-month-select', 'print-month-select'].forEach(id => {
         const el = document.getElementById(id); if(el) { el.innerHTML = ms.join(''); el.value = (new Date().getMonth()+1).toString().padStart(2,'0'); }
     });
-    const mC = document.getElementById('mileage-correction'); if(mC) mC.value = localStorage.getItem('mileage_correction') || 0;
-    const sL = document.getElementById('subsidy-limit'); if(sL) sL.value = localStorage.getItem('fuel_subsidy_limit') || 0;
+
+    const todayStr = Utils.getTodayString();
+    const nowTime = Utils.getCurrentTimeString();
+    const dIn = document.getElementById('date');
+    const tIn = document.getElementById('time');
+    if(dIn) dIn.value = todayStr;
+    if(tIn) tIn.value = nowTime;
+
+    const statToday = Utils.getStatisticalDate(todayStr, nowTime);
+    const picker = document.getElementById('today-date-picker');
+    if(picker) picker.value = statToday;
 
     UI.resetForm();
     updateAllDisplays();
     setupEventListeners();
-    initOtherFeatures();
 }
 
 function updateAllDisplays() {
