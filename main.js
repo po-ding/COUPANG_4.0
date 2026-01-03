@@ -7,12 +7,12 @@ import { parseSmsText, registerParsedTrip } from './sms_parser.js';
 function setupEventListeners() {
     const getEl = (id) => document.getElementById(id);
 
-    // SMS 및 전역 연결
+    // SMS 및 전역 등록
     getEl('btn-parse-sms')?.addEventListener('click', parseSmsText);
     window.registerParsedTrip = registerParsedTrip;
     window.updateAllDisplays = updateAllDisplays;
 
-    // 모바일 아코디언 토글
+    // 모바일 토글
     const toggleSections = ['datetime', 'type'];
     toggleSections.forEach(section => {
         const legend = getEl(`legend-${section}`);
@@ -27,7 +27,7 @@ function setupEventListeners() {
         }
     });
 
-    // 주소 클릭 복사
+    // 주소 복사
     getEl('address-display')?.addEventListener('click', (e) => {
         if (e.target.classList.contains('address-clickable')) {
             const addr = e.target.dataset.address;
@@ -35,7 +35,7 @@ function setupEventListeners() {
         }
     });
 
-    // 테이블 클릭 (수정 모드 진입 및 이름 복사)
+    // 테이블 클릭 (수정모드)
     document.querySelector('#today-records-table tbody')?.addEventListener('click', (e) => {
         const addrTarget = e.target.closest('.location-clickable');
         if (addrTarget) {
@@ -51,17 +51,15 @@ function setupEventListeners() {
         }
     });
 
-    // 상/하차지 인풋 핸들러
+    // 자동 로드
     const handleLocationInput = () => {
         const fromIn = getEl('from-center');
         const toIn = getEl('to-center');
         const typeIn = getEl('type');
         if(!fromIn || !toIn) return;
-
         const from = fromIn.value.trim();
         const to = toIn.value.trim();
         const type = typeIn.value;
-
         if((type === '화물운송' || type === '대기') && from && to) {
             const key = `${from}-${to}`;
             const incomeEl = getEl('income');
@@ -74,10 +72,14 @@ function setupEventListeners() {
                 if(Data.MEM_DISTANCES[key]) distEl.value = Data.MEM_DISTANCES[key];
                 else distEl.value = ''; 
             }
+            const costEl = getEl('cost');
+            if(costEl) {
+                if(Data.MEM_COSTS[key]) costEl.value = (Data.MEM_COSTS[key]/10000).toFixed(2);
+                else costEl.value = ''; 
+            }
         }
         UI.updateAddressDisplay();
     };
-
     getEl('from-center')?.addEventListener('input', handleLocationInput);
     getEl('to-center')?.addEventListener('input', handleLocationInput);
 
@@ -89,7 +91,6 @@ function setupEventListeners() {
         UI.resetForm();
         updateAllDisplays();
     });
-
     getEl('btn-start-trip')?.addEventListener('click', () => {
         const formData = UI.getFormDataWithoutTime();
         Data.addRecord({ id: Date.now(), date: Utils.getTodayString(), time: Utils.getCurrentTimeString(), ...formData });
@@ -97,14 +98,19 @@ function setupEventListeners() {
         UI.resetForm();
         updateAllDisplays();
     });
-
     getEl('btn-end-trip')?.addEventListener('click', () => {
         Data.addRecord({ id: Date.now(), date: Utils.getTodayString(), time: Utils.getCurrentTimeString(), type: '운행종료', distance: 0, cost: 0, income: 0 });
         Utils.showToast('운행 종료됨');
         UI.resetForm();
         updateAllDisplays();
     });
-
+    getEl('btn-trip-cancel')?.addEventListener('click', () => {
+        const formData = UI.getFormDataWithoutTime();
+        Data.addRecord({ id: Date.now(), date: Utils.getTodayString(), time: Utils.getCurrentTimeString(), ...formData, type: '운행취소' });
+        Utils.showToast('취소됨');
+        UI.resetForm();
+        updateAllDisplays();
+    });
     getEl('btn-save-general')?.addEventListener('click', () => {
         const formData = UI.getFormDataWithoutTime();
         Data.addRecord({ id: Date.now(), date: getEl('date').value, time: getEl('time').value, ...formData });
@@ -113,7 +119,7 @@ function setupEventListeners() {
         updateAllDisplays();
     });
 
-    // 수정 완료 버튼
+    // 수정 완료/삭제 버튼
     getEl('btn-update-record')?.addEventListener('click', () => {
         const id = parseInt(getEl('edit-id').value);
         const index = Data.MEM_RECORDS.findIndex(r => r.id === id);
@@ -127,7 +133,6 @@ function setupEventListeners() {
             updateAllDisplays();
         }
     });
-
     getEl('btn-delete-record')?.addEventListener('click', () => {
         if(confirm('정말 삭제하시겠습니까?')) {
             const id = parseInt(getEl('edit-id').value);
@@ -136,34 +141,28 @@ function setupEventListeners() {
             updateAllDisplays();
         }
     });
-
     getEl('btn-cancel-edit')?.addEventListener('click', UI.resetForm);
 
     getEl('btn-edit-start-trip')?.addEventListener('click', () => {
-        const nowTime = Utils.getCurrentTimeString();
-        const nowDate = Utils.getTodayString();
         const id = parseInt(getEl('edit-id').value);
         const index = Data.MEM_RECORDS.findIndex(r => r.id === id);
         if (index > -1) {
-            Data.MEM_RECORDS[index].date = nowDate;
-            Data.MEM_RECORDS[index].time = nowTime;
+            Data.MEM_RECORDS[index].date = Utils.getTodayString();
+            Data.MEM_RECORDS[index].time = Utils.getCurrentTimeString();
             Data.saveData();
-            Utils.showToast('시작 시간이 현재로 변경됨');
+            Utils.showToast('시작 시간 현재로 변경');
             UI.resetForm();
             updateAllDisplays();
         }
     });
-
     getEl('btn-edit-end-trip')?.addEventListener('click', () => {
-        const nowTime = Utils.getCurrentTimeString();
-        const nowDate = Utils.getTodayString();
-        Data.addRecord({ id: Date.now(), date: nowDate, time: nowTime, type: '운행종료', distance: 0, cost: 0, income: 0 });
+        Data.addRecord({ id: Date.now(), date: Utils.getTodayString(), time: Utils.getCurrentTimeString(), type: '운행종료', distance: 0, cost: 0, income: 0 });
         Utils.showToast('운행 종료됨');
         UI.resetForm();
         updateAllDisplays();
     });
 
-    getEl('refresh-btn')?.addEventListener('click', () => { UI.resetForm(); location.reload(); });
+    getEl('refresh-btn')?.addEventListener('click', () => location.reload());
     getEl('today-date-picker')?.addEventListener('change', () => updateAllDisplays());
     getEl('prev-day-btn')?.addEventListener('click', () => moveDate(-1));
     getEl('next-day-btn')?.addEventListener('click', () => moveDate(1));
@@ -185,9 +184,7 @@ function setupEventListeners() {
         updateAllDisplays(); 
     });
 
-    getEl('center-search-input')?.addEventListener('input', (e) => {
-        UI.displayCenterList(e.target.value);
-    });
+    getEl('center-search-input')?.addEventListener('input', (e) => UI.displayCenterList(e.target.value));
 
     document.querySelectorAll('.tab-btn').forEach(btn => { 
         btn.addEventListener("click", () => {
@@ -203,7 +200,7 @@ function setupEventListeners() {
 
     getEl('type')?.addEventListener('change', UI.toggleUI);
     
-    // 데이터 관리 기능들
+    // 데이터 백업
     getEl('export-json-btn')?.addEventListener('click', () => { 
         const data = { records: Data.MEM_RECORDS, centers: Data.MEM_CENTERS, locations: Data.MEM_LOCATIONS, fares: Data.MEM_FARES, distances: Data.MEM_DISTANCES, costs: Data.MEM_COSTS }; 
         const b = new Blob([JSON.stringify(data,null,2)],{type:"application/json"}); 
@@ -230,12 +227,12 @@ function initialSetup() {
     
     const todayStr = Utils.getTodayString();
     const nowTime = Utils.getCurrentTimeString();
-    const dateIn = document.getElementById('date');
-    const timeIn = document.getElementById('time');
+    const dIn = document.getElementById('date');
+    const tIn = document.getElementById('time');
     const picker = document.getElementById('today-date-picker');
     
-    if(dateIn) dateIn.value = todayStr;
-    if(timeIn) timeIn.value = nowTime;
+    if(dIn) dIn.value = todayStr;
+    if(tIn) tIn.value = nowTime;
     if(picker) picker.value = todayStr;
 
     // 년월 선택 박스 생성

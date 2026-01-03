@@ -10,12 +10,12 @@ export function toggleUI() {
     const type = typeSelect.value;
     const isEditMode = !editModeIndicator.classList.contains('hidden');
 
-    // 1. 모든 섹션과 액션 그룹 초기 숨김
-    const allElements = [
+    // 1. 모든 하위 섹션 및 버튼 그룹 초기 숨김
+    const sections = [
         'transport-details', 'fuel-details', 'supply-details', 'expense-details', 
         'cost-info-fieldset', 'trip-actions', 'general-actions', 'edit-actions'
     ];
-    allElements.forEach(id => {
+    sections.forEach(id => {
         const el = document.getElementById(id);
         if(el) el.classList.add('hidden');
     });
@@ -23,7 +23,7 @@ export function toggleUI() {
     const costWrapper = document.getElementById('cost-wrapper');
     const incomeWrapper = document.getElementById('income-wrapper');
 
-    // 2. 입력 필드 노출 설정
+    // 2. 기록 종류(type)에 따른 입력 필드 표시
     if (type === '화물운송' || type === '대기') {
         document.getElementById('transport-details')?.classList.remove('hidden');
         document.getElementById('cost-info-fieldset')?.classList.remove('hidden');
@@ -43,13 +43,12 @@ export function toggleUI() {
         else if (type === '지출') document.getElementById('expense-details')?.classList.remove('hidden');
     }
 
-    // 3. [핵심] 수정 모드 여부에 따른 버튼 및 문자창 제어
+    // 3. 버튼 그룹 노출 결정 (수정 모드 vs 일반 모드)
     if (isEditMode) {
-        // 수정 모드일 때
-        document.getElementById('edit-actions')?.classList.remove('hidden'); // 버튼 묶음 표시
+        // [핵심] 수정 모드일 때
+        document.getElementById('edit-actions')?.classList.remove('hidden');
         smsSection?.classList.add('hidden'); // ✅ 수정 모드에서 문자 입력창 숨김
 
-        // 운행 시작/종료 버튼은 화물운송일 때만 표시
         const btnEditStart = document.getElementById('btn-edit-start-trip');
         const btnEditEnd = document.getElementById('btn-edit-end-trip');
         if (['화물운송', '대기'].includes(type)) {
@@ -74,7 +73,7 @@ export function editRecord(id) {
     const r = MEM_RECORDS.find(x => x.id === id);
     if(!r) return;
 
-    // 데이터 채우기
+    // 데이터 폼에 채우기
     document.getElementById('date').value = r.date; 
     document.getElementById('time').value = r.time; 
     document.getElementById('type').value = r.type;
@@ -91,7 +90,7 @@ export function editRecord(id) {
     document.getElementById('supply-mileage').value = r.mileage || '';
     document.getElementById('edit-id').value = id; 
 
-    // 수정 모드 표시
+    // 수정 모드 활성화 (클래스 제거)
     document.getElementById('edit-mode-indicator')?.classList.remove('hidden');
     document.getElementById('date').disabled = true; 
     document.getElementById('time').disabled = true;
@@ -100,7 +99,7 @@ export function editRecord(id) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-// 나머지 모든 UI 보조 함수 (원본 유지)
+// 나머지 함수들은 원본 그대로 유지합니다.
 export function populateCenterDatalist() {
     const dl = document.getElementById('center-list');
     if(dl) dl.innerHTML = MEM_CENTERS.map(c => `<option value="${c}"></option>`).join('');
@@ -108,6 +107,17 @@ export function populateCenterDatalist() {
 export function populateExpenseDatalist() {
     const dl = document.getElementById('expense-list');
     if(dl) dl.innerHTML = MEM_EXPENSE_ITEMS.map(item => `<option value="${item}"></option>`).join('');
+}
+export function updateAddressDisplay() {
+    const fromVal = document.getElementById('from-center').value;
+    const toVal = document.getElementById('to-center').value;
+    const fromLoc = MEM_LOCATIONS[fromVal] || {};
+    const toLoc = MEM_LOCATIONS[toVal] || {};
+    let html = '';
+    if (fromLoc.address) html += `<div class="address-clickable" data-address="${fromLoc.address}">[상] ${fromLoc.address}</div>`;
+    if (toLoc.address) html += `<div class="address-clickable" data-address="${toLoc.address}">[하] ${toLoc.address}</div>`;
+    const displayEl = document.getElementById('address-display');
+    if(displayEl) displayEl.innerHTML = html;
 }
 export function resetForm() {
     document.getElementById('record-form').reset();
@@ -118,17 +128,6 @@ export function resetForm() {
     document.getElementById('date').disabled = false;
     document.getElementById('time').disabled = false;
     toggleUI();
-}
-export function updateAddressDisplay() {
-    const fromVal = document.getElementById('from-center').value;
-    const toVal = document.getElementById('to-center').value;
-    const fromLoc = MEM_LOCATIONS[fromVal] || {};
-    const toLoc = MEM_LOCATIONS[toVal] || {};
-    let html = '';
-    if (fromLoc.address) html += `<div class="address-clickable" data-address="${fromLoc.address}">[상차지] ${fromLoc.address}</div>`;
-    if (toLoc.address) html += `<div class="address-clickable" data-address="${toLoc.address}">[하차지] ${toLoc.address}</div>`;
-    const displayEl = document.getElementById('address-display');
-    if(displayEl) displayEl.innerHTML = html;
 }
 export function getFormDataWithoutTime() {
     return {
@@ -158,7 +157,7 @@ export function displayCenterList(filter='') {
         div.innerHTML=`<div class="info"><span class="center-name">${c}</span><div class="action-buttons"><button class="edit-btn">수정</button><button class="delete-btn">삭제</button></div></div>${l.address?`<span class="note">주소: ${l.address}</span>`:''}`;
         div.querySelector('.edit-btn').onclick = () => handleCenterEdit(div,c);
         div.querySelector('.delete-btn').onclick = () => {
-            if(!confirm('삭제하시겠습니까?')) return;
+            if(!confirm('삭제?')) return;
             const idx = MEM_CENTERS.indexOf(c);
             if(idx>-1) MEM_CENTERS.splice(idx,1);
             delete MEM_LOCATIONS[c];
